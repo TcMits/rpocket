@@ -1,8 +1,8 @@
 use crate::{error::APIError, error::RPocketError, service, store, store::auth_storage};
 use async_trait::async_trait;
 
-#[async_trait(?Send)]
-pub trait PocketBaseClient {
+#[async_trait]
+pub trait PocketBaseClient: Send + Sync {
     fn base_url(&self) -> &url::Url;
     fn auth_state(&self) -> &auth_storage::AuthStorage;
     fn request_builder(&self, method: reqwest::Method, url: &str) -> reqwest::RequestBuilder;
@@ -64,7 +64,7 @@ impl<'a> PocketBase<'a> {
     }
 }
 
-#[async_trait(?Send)]
+#[async_trait]
 impl<'a> PocketBaseClient for PocketBase<'a> {
     /// Get the base URL.
     fn base_url(&self) -> &url::Url {
@@ -90,7 +90,7 @@ impl<'a> PocketBaseClient for PocketBase<'a> {
         mut request_builder: reqwest::RequestBuilder,
     ) -> Result<reqwest::Response, RPocketError> {
         match self.auth_state().token()? {
-            Some(token) => request_builder = request_builder.header("Authorization", token), // TODO check expired token.
+            Some(token) => request_builder = request_builder.header("Authorization", token),
             None => {}
         }
 
@@ -99,6 +99,7 @@ impl<'a> PocketBaseClient for PocketBase<'a> {
             .build()
             .map_err(|e| RPocketError::RequestError(e))?;
 
+        // using self.client.execute() instead of request_builder.send()
         let resp: reqwest::Response = self
             .http_client
             .execute(request)
@@ -119,6 +120,8 @@ impl<'a> PocketBaseClient for PocketBase<'a> {
 
 #[cfg(test)]
 mod test {
+    use crate::store::{auth_storage::TOKEN_KEY, Storage};
+
     use super::*;
 
     #[test]
@@ -143,6 +146,7 @@ mod test {
     async fn test_pocket_base_send_request() {
         let mut server = mockito::Server::new();
         let memeory = store::MemoryStorage::new();
+        memeory.set(TOKEN_KEY, "token").unwrap();
         let url = server.url();
 
         let mock = server
@@ -150,6 +154,7 @@ mod test {
             .with_status(200)
             .with_header("Accept-Language", "en")
             .match_header("Accept-Language", "en")
+            .match_header("Authorization", "token")
             .create_async()
             .await;
 

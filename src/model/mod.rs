@@ -2,21 +2,21 @@ use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, PartialEq, Default, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Clone, Default, Serialize, Deserialize)]
 pub struct BaseModel {
     pub id: String,
     pub created: String,
     pub updated: String,
 }
 
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum Expand {
     Record(Box<Record>),
     ListRecords(Vec<Record>),
 }
 
-#[derive(Debug, PartialEq, Default, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Default, Clone, Serialize, Deserialize)]
 pub struct Record {
     #[serde(flatten)]
     pub base: BaseModel,
@@ -33,7 +33,7 @@ pub struct Record {
     pub expand: Option<Expand>,
 }
 
-#[derive(Debug, PartialEq, Default, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Default, Clone, Serialize, Deserialize)]
 pub struct Admin {
     #[serde(flatten)]
     pub base: BaseModel,
@@ -42,7 +42,7 @@ pub struct Admin {
     pub email: String,
 }
 
-#[derive(Debug, Default, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Default, Clone, Serialize, Deserialize)]
 pub struct ListResult<T> {
     pub page: i64,
 

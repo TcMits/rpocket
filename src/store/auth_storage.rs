@@ -23,9 +23,25 @@ impl<'a> AuthStorage<'a> {
     /// create a new AuthStorage.
     /// store: the storage to use.
     pub fn new(store: &'a dyn crate::store::Storage) -> Self {
+        return crate::store::auth_storage::AuthStorage::new_with_keys(
+            store,
+            TOKEN_KEY,
+            USER_OR_ADMIN_KEY,
+        );
+    }
+
+    /// create a new AuthStorage with custom keys.
+    /// store: the storage to use.
+    /// token_key: the key to use for the token.
+    /// user_or_admin_key: the key to use for the user or admin record.
+    pub fn new_with_keys(
+        store: &'a dyn crate::store::Storage,
+        token_key: &'a str,
+        user_or_admin_key: &'a str,
+    ) -> Self {
         return AuthStorage {
-            token_key: TOKEN_KEY,
-            user_or_admin_key: USER_OR_ADMIN_KEY,
+            token_key,
+            user_or_admin_key,
             store,
         };
     }

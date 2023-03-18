@@ -2,7 +2,7 @@ pub mod auth_storage;
 
 use crate::error::RPocketError;
 
-pub trait Storage {
+pub trait Storage: Send + Sync {
     /// get the value of a key.
     fn get(&self, key: &str) -> Result<Option<String>, RPocketError>;
     /// set the value of a key.
