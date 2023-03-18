@@ -1,6 +1,7 @@
-pub mod rpocket;
-pub mod store;
 pub mod error;
-mod service;
+pub mod model;
+pub mod rpocket;
+pub mod service;
+pub mod store;
 
 pub use crate::rpocket::PocketBase;
