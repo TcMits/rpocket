@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 
 use crate::error::RPocketError;
 use crate::model::{Admin, Record};
@@ -13,16 +14,23 @@ pub enum AuthPayload {
     Admin(Admin),
 }
 
-pub struct AuthStorage<'a> {
-    token_key: &'a str,
-    user_or_admin_key: &'a str,
-    store: &'a dyn crate::store::Storage,
+pub trait AuthState {
+    fn token(&self) -> Result<Option<String>, RPocketError>;
+    fn user_or_admin(&self) -> Result<Option<AuthPayload>, RPocketError>;
+    fn save(&self, token: &str, record: &AuthPayload) -> Result<(), RPocketError>;
+    fn clear(&self) -> Result<(), RPocketError>;
 }
 
-impl<'a> AuthStorage<'a> {
+pub struct AuthStorage {
+    token_key: &'static str,
+    user_or_admin_key: &'static str,
+    store: Arc<dyn crate::store::Storage + Send + Sync>,
+}
+
+impl AuthStorage {
     /// create a new AuthStorage.
     /// store: the storage to use.
-    pub fn new(store: &'a dyn crate::store::Storage) -> Self {
+    pub fn new(store: Arc<dyn crate::store::Storage + Send + Sync>) -> Self {
         return crate::store::auth_storage::AuthStorage::new_with_keys(
             store,
             TOKEN_KEY,
@@ -35,40 +43,15 @@ impl<'a> AuthStorage<'a> {
     /// token_key: the key to use for the token.
     /// user_or_admin_key: the key to use for the user or admin record.
     pub fn new_with_keys(
-        store: &'a dyn crate::store::Storage,
-        token_key: &'a str,
-        user_or_admin_key: &'a str,
+        store: Arc<dyn crate::store::Storage + Send + Sync>,
+        token_key: &'static str,
+        user_or_admin_key: &'static str,
     ) -> Self {
         return AuthStorage {
             token_key,
             user_or_admin_key,
             store,
         };
-    }
-
-    /// get the token.
-    /// return: the token if it exists, otherwise return None.
-    pub fn token(&self) -> Result<Option<String>, RPocketError> {
-        return self.store.get(self.token_key);
-    }
-
-    // get the user or admin record.
-    // return: the user or admin record if it exists, otherwise return None.
-    pub fn user_or_admin(&self) -> Result<Option<AuthPayload>, RPocketError> {
-        let data = self.store.get(self.user_or_admin_key)?;
-        return match data {
-            Some(data) => {
-                let record: AuthPayload =
-                    serde_json::from_str(&data).map_err(|e| RPocketError::SerdeError(e))?;
-                return Ok(Some(record));
-            }
-            None => Ok(None),
-        };
-    }
-
-    /// clear the storage.
-    pub fn clear(&self) -> Result<(), RPocketError> {
-        return self.store.clear();
     }
 
     fn save_token(&self, token: &str) -> Result<(), RPocketError> {
@@ -81,11 +64,38 @@ impl<'a> AuthStorage<'a> {
             &serde_json::to_string(record).map_err(|e| RPocketError::SerdeError(e))?,
         );
     }
+}
+
+impl AuthState for AuthStorage {
+    /// get the token.
+    /// return: the token if it exists, otherwise return None.
+    fn token(&self) -> Result<Option<String>, RPocketError> {
+        return self.store.get(self.token_key);
+    }
+
+    // get the user or admin record.
+    // return: the user or admin record if it exists, otherwise return None.
+    fn user_or_admin(&self) -> Result<Option<AuthPayload>, RPocketError> {
+        let data = self.store.get(self.user_or_admin_key)?;
+        return match data {
+            Some(data) => {
+                let record: AuthPayload =
+                    serde_json::from_str(&data).map_err(|e| RPocketError::SerdeError(e))?;
+                return Ok(Some(record));
+            }
+            None => Ok(None),
+        };
+    }
+
+    /// clear the storage.
+    fn clear(&self) -> Result<(), RPocketError> {
+        return self.store.clear();
+    }
 
     // save the token and the user or admin record.
     // token: the token to save.
     // record: the user or admin record to save.
-    pub fn save(&self, token: &str, record: &AuthPayload) -> Result<(), RPocketError> {
+    fn save(&self, token: &str, record: &AuthPayload) -> Result<(), RPocketError> {
         self.save_token(token)?;
         self.save_user_or_admin(record)?;
         return Ok(());
@@ -98,8 +108,8 @@ mod test {
 
     #[test]
     fn test_auth_storage() {
-        let store = crate::store::MemoryStorage::new();
-        let auth_storage = AuthStorage::new(&store);
+        let store = Arc::new(crate::store::MemoryStorage::new());
+        let auth_storage = AuthStorage::new(store.clone());
 
         // test clear
         assert!(auth_storage.clear().is_ok());

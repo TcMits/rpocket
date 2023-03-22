@@ -25,21 +25,34 @@ impl Default for RecordGetListConfig {
 }
 
 pub struct RecordService<'a> {
-    client: &'a dyn crate::rpocket::PocketBaseClient,
+    client: &'a mut dyn crate::rpocket::PocketBaseClient,
     collection: &'a str,
 }
 
 impl<'a> RecordService<'a> {
     /// create a new RecordService.
-    pub fn new(client: &'a dyn crate::rpocket::PocketBaseClient, collection: &'a str) -> Self {
+    pub fn new(client: &'a mut dyn crate::rpocket::PocketBaseClient, collection: &'a str) -> Self {
         return RecordService { client, collection };
+    }
+
+    /// send a request.
+    pub async fn send_request(
+        &mut self,
+        request_builder: reqwest::RequestBuilder,
+    ) -> Result<reqwest::Response, RPocketError> {
+        let pb_request = crate::rpocket::PocketBaseRequest::HTTP { request_builder };
+        return self.client.send(pb_request).await.map(|pb_response| {
+            return match pb_response {
+                crate::rpocket::PocketBaseResponse::HTTP { response } => response,
+            };
+        });
     }
 
     /// get a list of records.
     /// config: the config.
     /// return: the list of records.
     pub async fn get_list<T>(
-        &self,
+        &mut self,
         config: Option<&RecordGetListConfig>,
     ) -> Result<ListResult<T>, RPocketError>
     where
@@ -70,7 +83,7 @@ impl<'a> RecordService<'a> {
             .header("Content-Type", "application/json")
             .query(&queries);
 
-        let response = self.client.send_request(request_builder).await?;
+        let response = self.send_request(request_builder).await?;
 
         return Ok(response
             .json::<ListResult<T>>()
@@ -89,7 +102,6 @@ mod test {
     #[tokio::test]
     async fn test_record_get_list() {
         let mut server = mockito::Server::new();
-        let memeory = crate::store::MemoryStorage::new();
         let url = server.url();
 
         let mock = server
@@ -117,8 +129,8 @@ mod test {
             .create_async()
             .await;
 
-        let base = PocketBase::new(url.as_str(), "en", &memeory);
-        let record_service = RecordService::new(&base, "test");
+        let mut base = PocketBase::new(url.as_str(), "en");
+        let mut record_service = RecordService::new(&mut base, "test");
         let config = RecordGetListConfig {
             per_page: 10,
             page: 1,
