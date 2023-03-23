@@ -45,6 +45,8 @@ pub struct PocketBaseBuilder<L> {
     base_url: url::Url,
     // auth
     auth_state: Arc<dyn auth_storage::AuthState + Send + Sync>,
+    // http client
+    http_client: reqwest::Client,
     layer: L,
 }
 
@@ -57,6 +59,7 @@ impl PocketBaseBuilder<Identity> {
             auth_state: Arc::new(auth_storage::AuthStorage::new(Arc::new(
                 store::MemoryStorage::new(),
             ))),
+            http_client: reqwest::Client::new(),
             layer: Identity::new(),
         };
     }
@@ -84,6 +87,12 @@ impl<L> PocketBaseBuilder<L> {
         return self;
     }
 
+    /// Set the http client.
+    pub fn http_client(mut self, http_client: reqwest::Client) -> Self {
+        self.http_client = http_client;
+        return self;
+    }
+
     /// Add middlewares.
     pub fn layer<T>(self, layer: T) -> PocketBaseBuilder<tower::layer::util::Stack<T, L>> {
         return PocketBaseBuilder {
@@ -91,6 +100,7 @@ impl<L> PocketBaseBuilder<L> {
             base_url: self.base_url,
             auth_state: self.auth_state,
             layer: tower::layer::util::Stack::new(layer, self.layer),
+            http_client: self.http_client,
         };
     }
 
@@ -107,10 +117,9 @@ impl<L> PocketBaseBuilder<L> {
             + Send
             + Sync,
     {
-        let http_client = reqwest::Client::new();
         let client = PocketBaseService {
             inner: Arc::new(PocketBaseServiceRef {
-                http_client: http_client.clone(),
+                http_client: self.http_client.clone(),
             }),
         };
 
@@ -120,7 +129,7 @@ impl<L> PocketBaseBuilder<L> {
             lang: self.lang,
             base_url: self.base_url,
             auth_state: self.auth_state,
-            http_client,
+            http_client: self.http_client,
         };
 
         return PocketBase {
