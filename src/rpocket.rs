@@ -257,8 +257,8 @@ impl<S> PocketBase<S> {
             None => {}
         }
 
-        let resp = self
-            .client
+        let resp = tower::util::Ready::new(&mut self.client)
+            .await?
             .call(PocketBaseRequest::HTTP { request_builder })
             .await?;
 
