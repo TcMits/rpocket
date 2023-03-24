@@ -29,7 +29,6 @@ pub struct Record {
 
     #[serde(flatten)]
     pub data: HashMap<String, serde_json::Value>,
-
     pub expand: Option<Expand>,
 }
 

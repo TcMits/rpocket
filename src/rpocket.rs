@@ -247,9 +247,13 @@ impl<S> PocketBase<S> {
             PocketBaseRequest::HTTP { request_builder } => request_builder,
         };
 
-        request_builder = request_builder.header("Accept-Language", self.inner.lang);
+        request_builder =
+            request_builder.header(reqwest::header::ACCEPT_LANGUAGE.as_str(), self.inner.lang);
         match self.inner.auth_state.token()? {
-            Some(token) => request_builder = request_builder.header("Authorization", token),
+            Some(token) => {
+                request_builder =
+                    request_builder.header(reqwest::header::AUTHORIZATION.as_str(), token)
+            }
             None => {}
         }
 
@@ -348,9 +352,9 @@ mod test {
         let mock = server
             .mock("GET", "/")
             .with_status(200)
-            .with_header("Accept-Language", "en")
-            .match_header("Accept-Language", "en")
-            .match_header("Authorization", "token")
+            .with_header(reqwest::header::ACCEPT_LANGUAGE.as_str(), "en")
+            .match_header(reqwest::header::ACCEPT_LANGUAGE.as_str(), "en")
+            .match_header(reqwest::header::AUTHORIZATION.as_str(), "token")
             .create_async()
             .await;
 
@@ -380,8 +384,8 @@ mod test {
         let mock = server
             .mock("GET", "/")
             .with_status(400)
-            .with_header("Accept-Language", "en")
-            .match_header("Accept-Language", "en")
+            .with_header(reqwest::header::ACCEPT_LANGUAGE.as_str(), "en")
+            .match_header(reqwest::header::ACCEPT_LANGUAGE.as_str(), "en")
             .with_body("{\"code\": 400, \"message\": \"Bad Request\", \"data\": {}}")
             .create_async()
             .await;
@@ -442,8 +446,8 @@ mod test {
         let mock = server
             .mock("GET", "/")
             .with_status(400)
-            .with_header("Accept-Language", "en")
-            .match_header("Accept-Language", "en")
+            .with_header(reqwest::header::ACCEPT_LANGUAGE.as_str(), "en")
+            .match_header(reqwest::header::ACCEPT_LANGUAGE.as_str(), "en")
             .match_header("X-Test", "test")
             .with_body("{\"code\": 400, \"message\": \"Bad Request\", \"data\": {}}")
             .create_async()

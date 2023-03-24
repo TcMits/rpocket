@@ -18,3 +18,8 @@ tower = "0.4.13"
 [dev-dependencies]
 tokio = { version = "1.26.0", features = ["macros"] }
 mockito = "1.0"
+rpocket = { path = ".", features = ["multipart"] }
+
+[features]
+default = []
+multipart = ["reqwest/multipart"]
