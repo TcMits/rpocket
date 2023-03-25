@@ -38,6 +38,12 @@ pub struct RecordMutateConfig<T> {
     pub query_params: Vec<(String, String)>,
 }
 
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct RecordDeleteConfig {
+    pub id: String,
+    pub query_params: Vec<(String, String)>,
+}
+
 pub struct RecordService<'a> {
     client: &'a mut dyn crate::rpocket::PocketBaseClient,
     collection: &'a str,
@@ -207,6 +213,25 @@ impl<'a> RecordService<'a> {
             .json::<T>()
             .await
             .map_err(|e| RPocketError::RequestError(e))?);
+    }
+
+    /// delete a record
+    /// config: the config.
+    pub async fn delete(&mut self, config: &RecordDeleteConfig) -> Result<(), RPocketError> {
+        let url = self
+            .client
+            .base_url()
+            .join(format!("/collections/{}/records/{}", self.collection, config.id).as_str())
+            .map_err(|e| RPocketError::UrlError(e))?;
+
+        let request_builder = self
+            .client
+            .request_builder(reqwest::Method::DELETE, url.as_str())
+            .header(reqwest::header::CONTENT_TYPE.as_str(), "application/json")
+            .query(&config.query_params);
+
+        self.send_request(request_builder).await?;
+        return Ok(());
     }
 }
 
@@ -539,5 +564,30 @@ mod test {
         assert!(response.collection_id == "a98f514eb05f454");
         assert!(response.collection_name == "posts");
         assert!(response.data["title"] == "test2");
+    }
+
+    #[tokio::test]
+    async fn test_record_delete() {
+        let mut server = mockito::Server::new();
+        let url = server.url();
+
+        let mock = server
+            .mock("DELETE", "/collections/test/records/d08dfc4f4d84419")
+            .with_status(204)
+            .with_header("Accept-Language", "en")
+            .match_header(reqwest::header::CONTENT_TYPE.as_str(), "application/json")
+            .create_async()
+            .await;
+
+        let mut base = PocketBase::new(url.as_str(), "en");
+        let mut record_service = RecordService::new(&mut base, "test");
+        let config = RecordDeleteConfig {
+            id: String::from("d08dfc4f4d84419"),
+            query_params: Vec::new(),
+        };
+
+        let response = record_service.delete(&config).await;
+        mock.assert_async().await;
+        response.unwrap();
     }
 }
