@@ -7,6 +7,36 @@ use serde::{Deserialize, Serialize};
 const DEFAULT_PER_PAGE: i64 = 30;
 const DEFAULT_PAGE: i64 = 1;
 
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct AuthProvicderInfo {
+    pub name: String,
+    pub state: String,
+
+    #[serde(rename = "codeVerifier")]
+    pub code_verifier: String,
+
+    #[serde(rename = "codeChallenge")]
+    pub code_challenge: String,
+
+    #[serde(rename = "codeChallengeMethod")]
+    pub code_challenge_method: String,
+
+    #[serde(rename = "authUrl")]
+    pub auth_url: String,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct ListAuthMethod {
+    #[serde(rename = "usernamePassword")]
+    pub username_password: bool,
+
+    #[serde(rename = "emailPassword")]
+    pub email_password: bool,
+
+    #[serde(rename = "authProviders")]
+    pub auth_providers: Vec<AuthProvicderInfo>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RecordGetListConfig {
     pub per_page: i64,
@@ -41,6 +71,11 @@ pub struct RecordMutateConfig<T> {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct RecordDeleteConfig {
     pub id: String,
+    pub query_params: Vec<(String, String)>,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct RecordListAuthMethodsConfig {
     pub query_params: Vec<(String, String)>,
 }
 
@@ -83,7 +118,7 @@ impl<'a> RecordService<'a> {
         let url = self
             .client
             .base_url()
-            .join(format!("/collections/{}/records", self.collection).as_str())
+            .join(format!("/api/collections/{}/records", self.collection).as_str())
             .map_err(|e| RPocketError::UrlError(e))?;
         let mut queries: Vec<(&str, &str)> = Vec::with_capacity(2 + config.query_params.len());
         let per_page = &config.per_page.to_string();
@@ -119,7 +154,7 @@ impl<'a> RecordService<'a> {
         let url = self
             .client
             .base_url()
-            .join(format!("/collections/{}/records/{}", self.collection, config.id).as_str())
+            .join(format!("/api/collections/{}/records/{}", self.collection, config.id).as_str())
             .map_err(|e| RPocketError::UrlError(e))?;
 
         let request_builder = self
@@ -148,7 +183,7 @@ impl<'a> RecordService<'a> {
         let mut url = self
             .client
             .base_url()
-            .join(format!("/collections/{}/records", self.collection).as_str())
+            .join(format!("/api/collections/{}/records", self.collection).as_str())
             .map_err(|e| RPocketError::UrlError(e))?;
 
         if let Some(ref id) = config.id {
@@ -156,7 +191,7 @@ impl<'a> RecordService<'a> {
             url = self
                 .client
                 .base_url()
-                .join(format!("/collections/{}/records/{}", self.collection, id).as_str())
+                .join(format!("/api/collections/{}/records/{}", self.collection, id).as_str())
                 .map_err(|e| RPocketError::UrlError(e))?;
         }
 
@@ -189,7 +224,7 @@ impl<'a> RecordService<'a> {
         let mut url = self
             .client
             .base_url()
-            .join(format!("/collections/{}/records", self.collection).as_str())
+            .join(format!("/api/collections/{}/records", self.collection).as_str())
             .map_err(|e| RPocketError::UrlError(e))?;
 
         if let Some(ref id) = config.id {
@@ -197,7 +232,7 @@ impl<'a> RecordService<'a> {
             url = self
                 .client
                 .base_url()
-                .join(format!("/collections/{}/records/{}", self.collection, id).as_str())
+                .join(format!("/api/collections/{}/records/{}", self.collection, id).as_str())
                 .map_err(|e| RPocketError::UrlError(e))?;
         }
 
@@ -221,7 +256,7 @@ impl<'a> RecordService<'a> {
         let url = self
             .client
             .base_url()
-            .join(format!("/collections/{}/records/{}", self.collection, config.id).as_str())
+            .join(format!("/api/collections/{}/records/{}", self.collection, config.id).as_str())
             .map_err(|e| RPocketError::UrlError(e))?;
 
         let request_builder = self
@@ -232,6 +267,35 @@ impl<'a> RecordService<'a> {
 
         self.send_request(request_builder).await?;
         return Ok(());
+    }
+
+    /// list auth methods
+    /// config: the config.
+    pub async fn list_auth_methods<T>(
+        &mut self,
+        config: &RecordListAuthMethodsConfig,
+    ) -> Result<T, RPocketError>
+    where
+        T: serde::de::DeserializeOwned,
+    {
+        let url = self
+            .client
+            .base_url()
+            .join(format!("/api/collections/{}/auth-methods", self.collection).as_str())
+            .map_err(|e| RPocketError::UrlError(e))?;
+
+        let request_builder = self
+            .client
+            .request_builder(reqwest::Method::GET, url.as_str())
+            .header(reqwest::header::CONTENT_TYPE.as_str(), "application/json")
+            .query(&config.query_params);
+
+        let response = self.send_request(request_builder).await?;
+
+        return Ok(response
+            .json::<T>()
+            .await
+            .map_err(|e| RPocketError::RequestError(e))?);
     }
 }
 
@@ -249,7 +313,7 @@ mod test {
         let url = server.url();
 
         let mock = server
-            .mock("GET", "/collections/test/records?perPage=10&page=1")
+            .mock("GET", "/api/collections/test/records?perPage=10&page=1")
             .with_status(200)
             .with_header("Accept-Language", "en")
             .match_header(reqwest::header::CONTENT_TYPE.as_str(), "application/json")
@@ -304,7 +368,7 @@ mod test {
         let url = server.url();
 
         let mock = server
-            .mock("GET", "/collections/test/records/1")
+            .mock("GET", "/api/collections/test/records/1")
             .with_status(200)
             .with_header("Accept-Language", "en")
             .match_header(reqwest::header::CONTENT_TYPE.as_str(), "application/json")
@@ -346,7 +410,7 @@ mod test {
         let url = server.url();
 
         let mock = server
-            .mock("POST", "/collections/test/records")
+            .mock("POST", "/api/collections/test/records")
             .with_status(200)
             .with_header("Accept-Language", "en")
             .match_header(reqwest::header::CONTENT_TYPE.as_str(), "application/json")
@@ -405,7 +469,7 @@ mod test {
         let url = server.url();
 
         let mock = server
-            .mock("PATCH", "/collections/test/records/d08dfc4f4d84419")
+            .mock("PATCH", "/api/collections/test/records/d08dfc4f4d84419")
             .with_status(200)
             .with_header("Accept-Language", "en")
             .match_header(reqwest::header::CONTENT_TYPE.as_str(), "application/json")
@@ -472,7 +536,7 @@ mod test {
             .text("title", "test2");
 
         let mock = server
-            .mock("POST", "/collections/test/records")
+            .mock("POST", "/api/collections/test/records")
             .with_status(200)
             .with_header("Accept-Language", "en")
             .match_header(
@@ -526,7 +590,7 @@ mod test {
             .text("title", "test2");
 
         let mock = server
-            .mock("PATCH", "/collections/test/records/d08dfc4f4d84419")
+            .mock("PATCH", "/api/collections/test/records/d08dfc4f4d84419")
             .with_status(200)
             .with_header("Accept-Language", "en")
             .match_header(
@@ -572,7 +636,7 @@ mod test {
         let url = server.url();
 
         let mock = server
-            .mock("DELETE", "/collections/test/records/d08dfc4f4d84419")
+            .mock("DELETE", "/api/collections/test/records/d08dfc4f4d84419")
             .with_status(204)
             .with_header("Accept-Language", "en")
             .match_header(reqwest::header::CONTENT_TYPE.as_str(), "application/json")
@@ -589,5 +653,77 @@ mod test {
         let response = record_service.delete(&config).await;
         mock.assert_async().await;
         response.unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_record_list_auth_methods() {
+        let mut server = mockito::Server::new();
+        let url = server.url();
+
+        let mock = server
+            .mock("GET", "/api/collections/test/auth-methods")
+            .with_status(200)
+            .with_header("Accept-Language", "en")
+            .match_header(reqwest::header::CONTENT_TYPE.as_str(), "application/json")
+            .with_body(
+                r#"{
+  "usernamePassword": false,
+  "emailPassword": true,
+  "authProviders": [
+    {
+      "name": "github",
+      "state": "3Yd8jNkK_6PJG6hPWwBjLqKwse6Ejd",
+      "codeVerifier": "KxFDWz1B3fxscCDJ_9gHQhLuh__ie7",
+      "codeChallenge": "NM1oVexB6Q6QH8uPtOUfK7tq4pmu4Jz6lNDIwoxHZNE=",
+      "codeChallengeMethod": "S256",
+      "authUrl": "https://github.com/login/oauth/authorize?client_id=demo&code_challenge=NM1oVexB6Q6QH8uPtOUfK7tq4pmu4Jz6lNDIwoxHZNE%3D&code_challenge_method=S256&response_type=code&scope=user&state=3Yd8jNkK_6PJG6hPWwBjLqKwse6Ejd&redirect_uri="
+    },
+    {
+      "name": "gitlab",
+      "state": "NeQSbtO5cShr_mk5__3CUukiMnymeb",
+      "codeVerifier": "ahTFHOgua8mkvPAlIBGwCUJbWKR_xi",
+      "codeChallenge": "O-GATkTj4eXDCnfonsqGLCd6njvTixlpCMvy5kjgOOg=",
+      "codeChallengeMethod": "S256",
+      "authUrl": "https://gitlab.com/oauth/authorize?client_id=demo&code_challenge=O-GATkTj4eXDCnfonsqGLCd6njvTixlpCMvy5kjgOOg%3D&code_challenge_method=S256&response_type=code&scope=read_user&state=NeQSbtO5cShr_mk5__3CUukiMnymeb&redirect_uri="
+    },
+    {
+      "name": "google",
+      "state": "zB3ZPifV1TW2GMuvuFkamSXfSNkHPQ",
+      "codeVerifier": "t3CmO5VObGzdXqieakvR_fpjiW0zdO",
+      "codeChallenge": "KChwoQPKYlz2anAdqtgsSTdIo8hdwtc1fh2wHMwW2Yk=",
+      "codeChallengeMethod": "S256",
+      "authUrl": "https://accounts.google.com/o/oauth2/auth?client_id=demo&code_challenge=KChwoQPKYlz2anAdqtgsSTdIo8hdwtc1fh2wHMwW2Yk%3D&code_challenge_method=S256&response_type=code&scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fuserinfo.profile+https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fuserinfo.email&state=zB3ZPifV1TW2GMuvuFkamSXfSNkHPQ&redirect_uri="
+    }
+  ]            }"#,
+            )
+            .create_async()
+            .await;
+
+        let mut base = PocketBase::new(url.as_str(), "en");
+        let mut record_service = RecordService::new(&mut base, "test");
+        let config = RecordListAuthMethodsConfig {
+            query_params: Vec::new(),
+        };
+
+        let response = record_service
+            .list_auth_methods::<ListAuthMethod>(&config)
+            .await;
+        mock.assert_async().await;
+        let response = response.unwrap();
+
+        assert!(response.username_password == false);
+        assert!(response.email_password == true);
+        assert!(response.auth_providers.len() == 3);
+        assert!(response.auth_providers[0].name == "github");
+        assert!(response.auth_providers[0].state == "3Yd8jNkK_6PJG6hPWwBjLqKwse6Ejd");
+        assert!(response.auth_providers[0].code_verifier == "KxFDWz1B3fxscCDJ_9gHQhLuh__ie7");
+        assert!(
+            response.auth_providers[0].code_challenge
+                == "NM1oVexB6Q6QH8uPtOUfK7tq4pmu4Jz6lNDIwoxHZNE="
+        );
+        assert!(response.auth_providers[0].code_challenge_method == "S256");
+        assert!(
+            response.auth_providers[0].auth_url
+                == "https://github.com/login/oauth/authorize?client_id=demo&code_challenge=NM1oVexB6Q6QH8uPtOUfK7tq4pmu4Jz6lNDIwoxHZNE%3D&code_challenge_method=S256&response_type=code&scope=user&state=3Yd8jNkK_6PJG6hPWwBjLqKwse6Ejd&redirect_uri=")
     }
 }
