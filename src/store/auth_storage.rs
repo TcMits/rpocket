@@ -3,6 +3,7 @@ use std::sync::Arc;
 
 use crate::error::RPocketError;
 use crate::model::{Admin, Record};
+use async_trait::async_trait;
 
 pub static TOKEN_KEY: &str = "pb_auth";
 pub static USER_OR_ADMIN_KEY: &str = "pb_user_or_admin";
@@ -14,11 +15,12 @@ pub enum AuthPayload {
     Admin(Admin),
 }
 
+#[async_trait]
 pub trait AuthState {
-    fn token(&self) -> Result<Option<String>, RPocketError>;
-    fn user_or_admin(&self) -> Result<Option<AuthPayload>, RPocketError>;
-    fn save(&self, token: &str, record: &AuthPayload) -> Result<(), RPocketError>;
-    fn clear(&self) -> Result<(), RPocketError>;
+    async fn token(&self) -> Result<Option<String>, RPocketError>;
+    async fn user_or_admin(&self) -> Result<Option<AuthPayload>, RPocketError>;
+    async fn save(&self, token: &str, record: &AuthPayload) -> Result<(), RPocketError>;
+    async fn clear(&self) -> Result<(), RPocketError>;
 }
 
 pub struct AuthStorage {
@@ -54,29 +56,33 @@ impl AuthStorage {
         };
     }
 
-    fn save_token(&self, token: &str) -> Result<(), RPocketError> {
-        return self.store.set(self.token_key, token);
+    async fn save_token(&self, token: &str) -> Result<(), RPocketError> {
+        return self.store.set(self.token_key, token).await;
     }
 
-    fn save_user_or_admin(&self, record: &AuthPayload) -> Result<(), RPocketError> {
-        return self.store.set(
-            self.user_or_admin_key,
-            &serde_json::to_string(record).map_err(|e| RPocketError::SerdeError(e))?,
-        );
+    async fn save_user_or_admin(&self, record: &AuthPayload) -> Result<(), RPocketError> {
+        return self
+            .store
+            .set(
+                self.user_or_admin_key,
+                &serde_json::to_string(record).map_err(|e| RPocketError::SerdeError(e))?,
+            )
+            .await;
     }
 }
 
+#[async_trait]
 impl AuthState for AuthStorage {
     /// get the token.
     /// return: the token if it exists, otherwise return None.
-    fn token(&self) -> Result<Option<String>, RPocketError> {
-        return self.store.get(self.token_key);
+    async fn token(&self) -> Result<Option<String>, RPocketError> {
+        return self.store.get(self.token_key).await;
     }
 
     // get the user or admin record.
     // return: the user or admin record if it exists, otherwise return None.
-    fn user_or_admin(&self) -> Result<Option<AuthPayload>, RPocketError> {
-        let data = self.store.get(self.user_or_admin_key)?;
+    async fn user_or_admin(&self) -> Result<Option<AuthPayload>, RPocketError> {
+        let data = self.store.get(self.user_or_admin_key).await?;
         return match data {
             Some(data) => {
                 let record: AuthPayload =
@@ -88,16 +94,16 @@ impl AuthState for AuthStorage {
     }
 
     /// clear the storage.
-    fn clear(&self) -> Result<(), RPocketError> {
-        return self.store.clear();
+    async fn clear(&self) -> Result<(), RPocketError> {
+        return self.store.clear().await;
     }
 
     // save the token and the user or admin record.
     // token: the token to save.
     // record: the user or admin record to save.
-    fn save(&self, token: &str, record: &AuthPayload) -> Result<(), RPocketError> {
-        self.save_token(token)?;
-        self.save_user_or_admin(record)?;
+    async fn save(&self, token: &str, record: &AuthPayload) -> Result<(), RPocketError> {
+        self.save_token(token).await?;
+        self.save_user_or_admin(record).await?;
         return Ok(());
     }
 }
@@ -106,33 +112,33 @@ impl AuthState for AuthStorage {
 mod test {
     use super::*;
 
-    #[test]
-    fn test_auth_storage() {
+    #[tokio::test]
+    async fn test_auth_storage() {
         let store = Arc::new(crate::store::MemoryStorage::new());
         let auth_storage = AuthStorage::new(store.clone());
 
         // test clear
-        assert!(auth_storage.clear().is_ok());
+        assert!(auth_storage.clear().await.is_ok());
 
         // test token
-        assert!(auth_storage.token().unwrap().is_none());
-        assert!(auth_storage.save_token("token").is_ok());
-        assert_eq!(auth_storage.token().unwrap().unwrap(), "token");
+        assert!(auth_storage.token().await.unwrap().is_none());
+        assert!(auth_storage.save_token("token").await.is_ok());
+        assert_eq!(auth_storage.token().await.unwrap().unwrap(), "token");
 
         // test save
         let user_or_admin = AuthPayload::Admin(Admin {
             ..Default::default()
         });
-        assert!(auth_storage.save("token", &user_or_admin).is_ok());
-        assert_eq!(auth_storage.token().unwrap().unwrap(), "token");
+        assert!(auth_storage.save("token", &user_or_admin).await.is_ok());
+        assert_eq!(auth_storage.token().await.unwrap().unwrap(), "token");
         assert_eq!(
-            auth_storage.user_or_admin().unwrap().unwrap(),
+            auth_storage.user_or_admin().await.unwrap().unwrap(),
             user_or_admin
         );
 
         // test clear
-        assert!(auth_storage.clear().is_ok());
-        assert!(auth_storage.token().unwrap().is_none());
-        assert!(auth_storage.user_or_admin().unwrap().is_none());
+        assert!(auth_storage.clear().await.is_ok());
+        assert!(auth_storage.token().await.unwrap().is_none());
+        assert!(auth_storage.user_or_admin().await.unwrap().is_none());
     }
 }

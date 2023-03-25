@@ -1,5 +1,8 @@
+use std::collections::HashMap;
+
 use crate::error::RPocketError;
-use crate::model::ListResult;
+use crate::model::{ListResult, Record};
+use crate::store::auth_storage::AuthPayload;
 #[cfg(feature = "multipart")]
 use reqwest::multipart;
 use serde::{Deserialize, Serialize};
@@ -12,7 +15,7 @@ const DEFAULT_PAGE: i64 = 1;
 pub struct RecordAuthResponse<T> {
     pub token: String,
     pub record: T,
-    pub meta: Option<serde_json::Value>,
+    pub meta: Option<HashMap<String, serde_json::Value>>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -58,14 +61,12 @@ pub struct RecordGetOneConfig {
     pub query_params: Vec<(String, String)>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct RecordMutateConfig<T> {
     #[serde(skip)]
     pub id: Option<String>,
-
     #[serde(flatten)]
     pub body: T,
-
     #[serde(skip)]
     pub query_params: Vec<(String, String)>,
 }
@@ -81,16 +82,32 @@ pub struct RecordListAuthMethodsConfig {
     pub query_params: Vec<(String, String)>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct RecordAuthWithPasswordConfig<T> {
     pub identity: String,
     pub password: String,
-
     #[serde(flatten)]
     pub body: T,
-
     #[serde(skip)]
     pub query_params: Vec<(String, String)>,
+    #[serde(skip)]
+    pub without_saving: bool,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct RecordAuthWithOAuth2Config<T> {
+    pub provider: String,
+    pub code: String,
+    #[serde(rename = "codeVerifier")]
+    pub code_verifier: String,
+    #[serde(rename = "redirectUrl")]
+    pub redirect_url: String,
+    #[serde(flatten)]
+    pub body: T,
+    #[serde(skip)]
+    pub query_params: Vec<(String, String)>,
+    #[serde(skip)]
+    pub without_saving: bool,
 }
 
 pub struct RecordService<'a> {
@@ -312,6 +329,39 @@ impl<'a> RecordService<'a> {
             .map_err(|e| RPocketError::RequestError(e))?);
     }
 
+    async fn save_auth_response<T>(&self, response: reqwest::Response) -> Result<T, RPocketError>
+    where
+        T: serde::de::DeserializeOwned,
+    {
+        let auth_state = self.client.auth_state();
+        let auth_response = response
+            .json::<RecordAuthResponse<Record>>()
+            .await
+            .map_err(|e| RPocketError::RequestError(e))?;
+
+        let token = auth_response.token;
+        let meta = auth_response.meta;
+        let user = AuthPayload::User(auth_response.record);
+
+        auth_state.save(token.as_str(), &user).await?;
+
+        let record = match user {
+            AuthPayload::User(user) => user,
+            _ => unreachable!(),
+        };
+
+        let auth_response = RecordAuthResponse {
+            token,
+            record,
+            meta,
+        };
+
+        let auth_response =
+            serde_json::to_value(&auth_response).map_err(|e| RPocketError::SerdeError(e))?;
+
+        return serde_json::from_value(auth_response).map_err(|e| RPocketError::SerdeError(e));
+    }
+
     /// authenticate with password
     /// config: the config.
     pub async fn auth_with_password<T, B>(
@@ -335,6 +385,44 @@ impl<'a> RecordService<'a> {
             .json(&config);
 
         let response = self.send_request(request_builder).await?;
+
+        if !config.without_saving {
+            return self.save_auth_response::<T>(response).await;
+        }
+
+        return Ok(response
+            .json::<T>()
+            .await
+            .map_err(|e| RPocketError::RequestError(e))?);
+    }
+
+    /// authenticate with oauth2
+    /// config: the config.
+    pub async fn auth_with_oauth2<T, B>(
+        &mut self,
+        config: &RecordAuthWithOAuth2Config<B>,
+    ) -> Result<T, RPocketError>
+    where
+        T: serde::de::DeserializeOwned,
+        B: Serialize,
+    {
+        let url = self
+            .client
+            .base_url()
+            .join(format!("/api/collections/{}/auth-with-oauth2", self.collection).as_str())
+            .map_err(|e| RPocketError::UrlError(e))?;
+
+        let request_builder = self
+            .client
+            .request_builder(reqwest::Method::POST, url.as_str())
+            .header(reqwest::header::CONTENT_TYPE.as_str(), "application/json")
+            .json(&config);
+
+        let response = self.send_request(request_builder).await?;
+
+        if !config.without_saving {
+            return self.save_auth_response::<T>(response).await;
+        }
 
         return Ok(response
             .json::<T>()
@@ -845,6 +933,7 @@ mod test {
             .with_status(200)
             .with_header("Accept-Language", "en")
             .match_header(reqwest::header::CONTENT_TYPE.as_str(), "application/json")
+            .match_body(r#"{"identity":"test","password":"12345678"}"#)
             .with_body(
                 r#"{
   "token": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsInR5cGUiOiJhdXRoUmVjb3JkIiwiY29sbGVjdGlvbklkIjoiX3BiX3VzZXJzX2F1dGhfIiwiZXhwIjoyMjA4OTg1MjYxfQ.UwD8JvkbQtXpymT09d7J6fdA0aP9g4FJ1GPh_ggEkzc",
@@ -872,6 +961,7 @@ mod test {
             password: String::from_str("12345678").unwrap(),
             body: HashMap::new(),
             query_params: Vec::new(),
+            ..Default::default()
         };
 
         let response = record_service
@@ -892,5 +982,80 @@ mod test {
         assert!(response.record.data["verified"] == false);
         assert!(response.record.data["emailVisibility"] == true);
         assert!(response.record.data["someCustomField"] == "example 123");
+    }
+
+    #[tokio::test]
+    async fn test_record_auth_with_oauth2() {
+        let mut server = mockito::Server::new();
+        let url = server.url();
+
+        let mock = server
+            .mock("POST", "/api/collections/test/auth-with-oauth2")
+            .with_status(200)
+            .with_header("Accept-Language", "en")
+            .match_header(reqwest::header::CONTENT_TYPE.as_str(), "application/json")
+            .match_body(r#"{"provider":"google","code":"12345678","codeVerifier":"12345678","redirectUrl":"https://example.com"}"#)
+            .with_body(
+                r#"{
+  "token": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsInR5cGUiOiJhdXRoUmVjb3JkIiwiY29sbGVjdGlvbklkIjoiX3BiX3VzZXJzX2F1dGhfIiwiZXhwIjoyMjA4OTg1MjYxfQ.UwD8JvkbQtXpymT09d7J6fdA0aP9g4FJ1GPh_ggEkzc",
+  "record": {
+    "id": "8171022dc95a4ed",
+    "collectionId": "d2972397d45614e",
+    "collectionName": "users",
+    "created": "2022-06-24 06:24:18.434Z",
+    "updated": "2022-06-24 06:24:18.889Z",
+    "username": "test@example.com",
+    "email": "test@example.com",
+    "verified": true,
+    "emailVisibility": false,
+    "someCustomField": "example 123"
+  },
+  "meta": {
+    "id": "abc123",
+    "name": "John Doe",
+    "username": "john.doe",
+    "email": "test@example.com",
+    "avatarUrl": "https://example.com/avatar.png"
+  }                }"#,
+                )
+            .create_async()
+            .await;
+
+        let mut base = PocketBase::new(url.as_str(), "en");
+        let mut record_service = RecordService::new(&mut base, "test");
+        let config = RecordAuthWithOAuth2Config::<HashMap<String, String>> {
+            provider: String::from_str("google").unwrap(),
+            code: String::from_str("12345678").unwrap(),
+            code_verifier: String::from_str("12345678").unwrap(),
+            redirect_url: String::from_str("https://example.com").unwrap(),
+            body: HashMap::new(),
+            query_params: Vec::new(),
+            ..Default::default()
+        };
+
+        let response = record_service
+            .auth_with_oauth2::<RecordAuthResponse<Record>, HashMap<String, String>>(&config)
+            .await;
+
+        mock.assert_async().await;
+        let response = response.unwrap();
+
+        assert!(response.token == "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsInR5cGUiOiJhdXRoUmVjb3JkIiwiY29sbGVjdGlvbklkIjoiX3BiX3VzZXJzX2F1dGhfIiwiZXhwIjoyMjA4OTg1MjYxfQ.UwD8JvkbQtXpymT09d7J6fdA0aP9g4FJ1GPh_ggEkzc");
+        assert!(response.record.base.id == "8171022dc95a4ed");
+        assert!(response.record.collection_id == "d2972397d45614e");
+        assert!(response.record.collection_name == "users");
+        assert!(response.record.base.created == "2022-06-24 06:24:18.434Z");
+        assert!(response.record.base.updated == "2022-06-24 06:24:18.889Z");
+        assert!(response.record.data["username"] == "test@example.com");
+        assert!(response.record.data["email"] == "test@example.com");
+        assert!(response.record.data["verified"] == true);
+        assert!(response.record.data["emailVisibility"] == false);
+        assert!(response.record.data["someCustomField"] == "example 123");
+        let meta = response.meta.unwrap();
+        assert!(meta["id"] == "abc123");
+        assert!(meta["name"] == "John Doe");
+        assert!(meta["username"] == "john.doe");
+        assert!(meta["email"] == "test@example.com");
+        assert!(meta["avatarUrl"] == "https://example.com/avatar.png");
     }
 }

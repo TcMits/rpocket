@@ -249,7 +249,7 @@ impl<S> PocketBase<S> {
 
         request_builder =
             request_builder.header(reqwest::header::ACCEPT_LANGUAGE.as_str(), self.inner.lang);
-        match self.inner.auth_state.token()? {
+        match self.inner.auth_state.token().await? {
             Some(token) => {
                 request_builder =
                     request_builder.header(reqwest::header::AUTHORIZATION.as_str(), token)
@@ -345,7 +345,7 @@ mod test {
     async fn test_pocket_base_send_request() {
         let mut server = mockito::Server::new();
         let memeory = Arc::new(store::MemoryStorage::new());
-        memeory.set(TOKEN_KEY, "token").unwrap();
+        memeory.set(TOKEN_KEY, "token").await.unwrap();
         let auth_state = Arc::new(auth_storage::AuthStorage::new(memeory.clone()));
         let url = server.url();
 
