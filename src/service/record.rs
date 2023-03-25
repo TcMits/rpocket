@@ -8,32 +8,29 @@ const DEFAULT_PER_PAGE: i64 = 30;
 const DEFAULT_PAGE: i64 = 1;
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RecordAuthResponse<T> {
+    pub token: String,
+    pub record: T,
+    pub meta: Option<serde_json::Value>,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct AuthProvicderInfo {
     pub name: String,
     pub state: String,
-
-    #[serde(rename = "codeVerifier")]
     pub code_verifier: String,
-
-    #[serde(rename = "codeChallenge")]
     pub code_challenge: String,
-
-    #[serde(rename = "codeChallengeMethod")]
     pub code_challenge_method: String,
-
-    #[serde(rename = "authUrl")]
     pub auth_url: String,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ListAuthMethod {
-    #[serde(rename = "usernamePassword")]
     pub username_password: bool,
-
-    #[serde(rename = "emailPassword")]
     pub email_password: bool,
-
-    #[serde(rename = "authProviders")]
     pub auth_providers: Vec<AuthProvicderInfo>,
 }
 
@@ -61,10 +58,15 @@ pub struct RecordGetOneConfig {
     pub query_params: Vec<(String, String)>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RecordMutateConfig<T> {
+    #[serde(skip)]
     pub id: Option<String>,
+
+    #[serde(flatten)]
     pub body: T,
+
+    #[serde(skip)]
     pub query_params: Vec<(String, String)>,
 }
 
@@ -76,6 +78,18 @@ pub struct RecordDeleteConfig {
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct RecordListAuthMethodsConfig {
+    pub query_params: Vec<(String, String)>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RecordAuthWithPasswordConfig<T> {
+    pub identity: String,
+    pub password: String,
+
+    #[serde(flatten)]
+    pub body: T,
+
+    #[serde(skip)]
     pub query_params: Vec<(String, String)>,
 }
 
@@ -198,7 +212,7 @@ impl<'a> RecordService<'a> {
         let request_builder = self
             .client
             .request_builder(method, url.as_str())
-            .json(&config.body)
+            .json(&config)
             .query(&config.query_params);
 
         let response = self.send_request(request_builder).await?;
@@ -297,12 +311,42 @@ impl<'a> RecordService<'a> {
             .await
             .map_err(|e| RPocketError::RequestError(e))?);
     }
+
+    /// authenticate with password
+    /// config: the config.
+    pub async fn auth_with_password<T, B>(
+        &mut self,
+        config: &RecordAuthWithPasswordConfig<B>,
+    ) -> Result<T, RPocketError>
+    where
+        T: serde::de::DeserializeOwned,
+        B: Serialize,
+    {
+        let url = self
+            .client
+            .base_url()
+            .join(format!("/api/collections/{}/auth-with-password", self.collection).as_str())
+            .map_err(|e| RPocketError::UrlError(e))?;
+
+        let request_builder = self
+            .client
+            .request_builder(reqwest::Method::POST, url.as_str())
+            .header(reqwest::header::CONTENT_TYPE.as_str(), "application/json")
+            .json(&config);
+
+        let response = self.send_request(request_builder).await?;
+
+        return Ok(response
+            .json::<T>()
+            .await
+            .map_err(|e| RPocketError::RequestError(e))?);
+    }
 }
 
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::model::{BaseModel, Record};
+    use crate::model::{BaseModel, ExpandValue, Record};
     use crate::rpocket::PocketBase;
     use std::collections::HashMap;
     use std::str::FromStr;
@@ -325,7 +369,34 @@ mod test {
                       "collectionName": "posts",
                       "updated": "2022-06-25 11:03:45.876",
                       "created": "2022-06-25 11:03:45.876",
-                      "title": "test2"
+                      "title": "test2",
+                      "expand": {
+                            "user": {
+                                "id": "FtHAW9feB5rze7D",
+                                "collectionId": "srmAo0hLxEqYF7F",
+                                "collectionName": "users",
+                                "created": "2022-01-01 00:00:00.000Z",
+                                "updated": "2022-01-01 00:00:00.000Z",
+                                "username": "users54126",
+                                "verified": false,
+                                "emailVisibility": false,
+                                "name": "John Doe"
+                            },
+                            "relatedPeople": [
+                            {
+                                "id": "FtHAW9feB5rze7D",
+                                "collectionId": "srmAo0hLxEqYF7F",
+                                "collectionName": "users",
+                                "created": "2022-01-01 00:00:00.000Z",
+                                "updated": "2022-01-01 00:00:00.000Z",
+                                "username": "users54126",
+                                "verified": false,
+                                "emailVisibility": false,
+                                "name": "John Doe"
+                            }
+                            ]
+                        }
+
                     }
                 ],
                 "totalItems": 1,
@@ -360,6 +431,43 @@ mod test {
         assert!(response.items[0].collection_id == "a98f514eb05f454");
         assert!(response.items[0].collection_name == "posts");
         assert!(response.items[0].data["title"] == "test2");
+
+        let expand_records = response.items[0].expand.as_ref().unwrap();
+
+        match expand_records["user"] {
+            ExpandValue::Record(ref user) => {
+                assert!(user.base.id == "FtHAW9feB5rze7D");
+                assert!(user.base.created == "2022-01-01 00:00:00.000Z");
+                assert!(user.base.updated == "2022-01-01 00:00:00.000Z");
+                assert!(user.collection_id == "srmAo0hLxEqYF7F");
+                assert!(user.collection_name == "users");
+                assert!(user.data["username"] == "users54126");
+                assert!(user.data["verified"] == false);
+                assert!(user.data["emailVisibility"] == false);
+                assert!(user.data["name"] == "John Doe");
+            }
+            _ => {
+                panic!("ExpandValue is not Record");
+            }
+        }
+
+        match expand_records["relatedPeople"] {
+            ExpandValue::ListRecords(ref related_people) => {
+                assert!(related_people.len() == 1);
+                assert!(related_people[0].base.id == "FtHAW9feB5rze7D");
+                assert!(related_people[0].base.created == "2022-01-01 00:00:00.000Z");
+                assert!(related_people[0].base.updated == "2022-01-01 00:00:00.000Z");
+                assert!(related_people[0].collection_id == "srmAo0hLxEqYF7F");
+                assert!(related_people[0].collection_name == "users");
+                assert!(related_people[0].data["username"] == "users54126");
+                assert!(related_people[0].data["verified"] == false);
+                assert!(related_people[0].data["emailVisibility"] == false);
+                assert!(related_people[0].data["name"] == "John Doe");
+            }
+            _ => {
+                panic!("ExpandValue is not a list of records");
+            }
+        }
     }
 
     #[tokio::test]
@@ -411,7 +519,7 @@ mod test {
 
         let mock = server
             .mock("POST", "/api/collections/test/records")
-            .with_status(200)
+            .with_status(201)
             .with_header("Accept-Language", "en")
             .match_header(reqwest::header::CONTENT_TYPE.as_str(), "application/json")
             .match_body(
@@ -537,7 +645,7 @@ mod test {
 
         let mock = server
             .mock("POST", "/api/collections/test/records")
-            .with_status(200)
+            .with_status(201)
             .with_header("Accept-Language", "en")
             .match_header(
                 reqwest::header::CONTENT_TYPE.as_str(),
@@ -725,5 +833,64 @@ mod test {
         assert!(
             response.auth_providers[0].auth_url
                 == "https://github.com/login/oauth/authorize?client_id=demo&code_challenge=NM1oVexB6Q6QH8uPtOUfK7tq4pmu4Jz6lNDIwoxHZNE%3D&code_challenge_method=S256&response_type=code&scope=user&state=3Yd8jNkK_6PJG6hPWwBjLqKwse6Ejd&redirect_uri=")
+    }
+
+    #[tokio::test]
+    async fn test_record_auth_with_password() {
+        let mut server = mockito::Server::new();
+        let url = server.url();
+
+        let mock = server
+            .mock("POST", "/api/collections/test/auth-with-password")
+            .with_status(200)
+            .with_header("Accept-Language", "en")
+            .match_header(reqwest::header::CONTENT_TYPE.as_str(), "application/json")
+            .with_body(
+                r#"{
+  "token": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsInR5cGUiOiJhdXRoUmVjb3JkIiwiY29sbGVjdGlvbklkIjoiX3BiX3VzZXJzX2F1dGhfIiwiZXhwIjoyMjA4OTg1MjYxfQ.UwD8JvkbQtXpymT09d7J6fdA0aP9g4FJ1GPh_ggEkzc",
+  "record": {
+    "id": "8171022dc95a4ed",
+    "collectionId": "d2972397d45614e",
+    "collectionName": "users",
+    "created": "2022-06-24 06:24:18.434Z",
+    "updated": "2022-06-24 06:24:18.889Z",
+    "username": "test@example.com",
+    "email": "test@example.com",
+    "verified": false,
+    "emailVisibility": true,
+    "someCustomField": "example 123"
+  }
+                }"#,
+                )
+            .create_async()
+            .await;
+
+        let mut base = PocketBase::new(url.as_str(), "en");
+        let mut record_service = RecordService::new(&mut base, "test");
+        let config = RecordAuthWithPasswordConfig::<HashMap<String, String>> {
+            identity: String::from_str("test").unwrap(),
+            password: String::from_str("12345678").unwrap(),
+            body: HashMap::new(),
+            query_params: Vec::new(),
+        };
+
+        let response = record_service
+            .auth_with_password::<RecordAuthResponse<Record>, HashMap<String, String>>(&config)
+            .await;
+
+        mock.assert_async().await;
+        let response = response.unwrap();
+
+        assert!(response.token == "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsInR5cGUiOiJhdXRoUmVjb3JkIiwiY29sbGVjdGlvbklkIjoiX3BiX3VzZXJzX2F1dGhfIiwiZXhwIjoyMjA4OTg1MjYxfQ.UwD8JvkbQtXpymT09d7J6fdA0aP9g4FJ1GPh_ggEkzc");
+        assert!(response.record.base.id == "8171022dc95a4ed");
+        assert!(response.record.collection_id == "d2972397d45614e");
+        assert!(response.record.collection_name == "users");
+        assert!(response.record.base.created == "2022-06-24 06:24:18.434Z");
+        assert!(response.record.base.updated == "2022-06-24 06:24:18.889Z");
+        assert!(response.record.data["username"] == "test@example.com");
+        assert!(response.record.data["email"] == "test@example.com");
+        assert!(response.record.data["verified"] == false);
+        assert!(response.record.data["emailVisibility"] == true);
+        assert!(response.record.data["someCustomField"] == "example 123");
     }
 }
