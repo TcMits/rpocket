@@ -185,6 +185,13 @@ pub struct RecordListExternalAuthsConfig {
     pub query_params: Vec<(String, String)>,
 }
 
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct RecordUnlinkExternalAuthConfig {
+    pub id: String,
+    pub provider: String,
+    pub query_params: Vec<(String, String)>,
+}
+
 pub struct RecordService<'a> {
     client: &'a mut dyn crate::rpocket::PocketBaseClient,
     collection: &'a str,
@@ -742,6 +749,34 @@ impl<'a> RecordService<'a> {
             .json::<Vec<T>>()
             .await
             .map_err(|e| RPocketError::RequestError(e));
+    }
+
+    /// unlink a single external auth provider from the specified auth record.
+    /// config: the config.
+    pub async fn unlink_external_auth(
+        &mut self,
+        config: &RecordUnlinkExternalAuthConfig,
+    ) -> Result<(), RPocketError> {
+        let url = self
+            .client
+            .base_url()
+            .join(
+                format!(
+                    "/api/collections/{}/records/{}/external-auths/{}",
+                    self.collection, config.id, config.provider
+                )
+                .as_str(),
+            )
+            .map_err(|e| RPocketError::UrlError(e))?;
+
+        let request_builder = self
+            .client
+            .request_builder(reqwest::Method::DELETE, url.as_str())
+            .header(reqwest::header::CONTENT_TYPE.as_str(), "application/json")
+            .query(&config.query_params);
+
+        self.send_request(request_builder).await?;
+        return Ok(());
     }
 }
 
@@ -1670,5 +1705,35 @@ mod test {
         assert_eq!(response[0].collection_id, "POWMOh0W6IoLUAI");
         assert_eq!(response[0].provider, "google");
         assert_eq!(response[0].provider_id, "2da15468800514p");
+    }
+
+    #[tokio::test]
+    async fn test_record_unlink_external_auth() {
+        let mut server = mockito::Server::new();
+        let url = server.url();
+
+        let mock = server
+            .mock(
+                "DELETE",
+                "/api/collections/test/records/test/external-auths/test",
+            )
+            .with_status(204)
+            .with_header("Accept-Language", "en")
+            .match_header(reqwest::header::CONTENT_TYPE.as_str(), "application/json")
+            .create_async()
+            .await;
+
+        let mut base = PocketBase::new(url.as_str(), "en");
+        let mut record_service = RecordService::new(&mut base, "test");
+        let config = RecordUnlinkExternalAuthConfig {
+            id: String::from_str("test").unwrap(),
+            provider: String::from_str("test").unwrap(),
+            query_params: Vec::new(),
+        };
+
+        let response = record_service.unlink_external_auth(&config).await;
+
+        mock.assert_async().await;
+        response.unwrap();
     }
 }
