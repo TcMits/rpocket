@@ -169,6 +169,16 @@ pub struct RecordRequestEmailChangeConfig<T> {
     pub query_params: Vec<(String, String)>,
 }
 
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct RecordConfirmEmailChangeConfig<T> {
+    pub token: String,
+    pub password: String,
+    #[serde(flatten)]
+    pub body: T,
+    #[serde(skip)]
+    pub query_params: Vec<(String, String)>,
+}
+
 pub struct RecordService<'a> {
     client: &'a mut dyn crate::rpocket::PocketBaseClient,
     collection: &'a str,
@@ -440,6 +450,7 @@ impl<'a> RecordService<'a> {
             .client
             .request_builder(reqwest::Method::POST, url.as_str())
             .header(reqwest::header::CONTENT_TYPE.as_str(), "application/json")
+            .query(&config.query_params)
             .json(&config);
 
         let response = self.send_request(request_builder).await?;
@@ -474,6 +485,7 @@ impl<'a> RecordService<'a> {
             .client
             .request_builder(reqwest::Method::POST, url.as_str())
             .header(reqwest::header::CONTENT_TYPE.as_str(), "application/json")
+            .query(&config.query_params)
             .json(&config);
 
         let response = self.send_request(request_builder).await?;
@@ -508,6 +520,7 @@ impl<'a> RecordService<'a> {
             .client
             .request_builder(reqwest::Method::POST, url.as_str())
             .header(reqwest::header::CONTENT_TYPE.as_str(), "application/json")
+            .query(&config.query_params)
             .json(&config);
 
         let response = self.send_request(request_builder).await?;
@@ -547,6 +560,7 @@ impl<'a> RecordService<'a> {
             .client
             .request_builder(reqwest::Method::POST, url.as_str())
             .header(reqwest::header::CONTENT_TYPE.as_str(), "application/json")
+            .query(&config.query_params)
             .json(&config);
 
         self.send_request(request_builder).await?;
@@ -578,6 +592,7 @@ impl<'a> RecordService<'a> {
             .client
             .request_builder(reqwest::Method::POST, url.as_str())
             .header(reqwest::header::CONTENT_TYPE.as_str(), "application/json")
+            .query(&config.query_params)
             .json(&config);
 
         self.send_request(request_builder).await?;
@@ -603,6 +618,7 @@ impl<'a> RecordService<'a> {
             .client
             .request_builder(reqwest::Method::POST, url.as_str())
             .header(reqwest::header::CONTENT_TYPE.as_str(), "application/json")
+            .query(&config.query_params)
             .json(&config);
 
         self.send_request(request_builder).await?;
@@ -628,6 +644,7 @@ impl<'a> RecordService<'a> {
             .client
             .request_builder(reqwest::Method::POST, url.as_str())
             .header(reqwest::header::CONTENT_TYPE.as_str(), "application/json")
+            .query(&config.query_params)
             .json(&config);
 
         self.send_request(request_builder).await?;
@@ -653,6 +670,33 @@ impl<'a> RecordService<'a> {
             .client
             .request_builder(reqwest::Method::POST, url.as_str())
             .header(reqwest::header::CONTENT_TYPE.as_str(), "application/json")
+            .query(&config.query_params)
+            .json(&config);
+
+        self.send_request(request_builder).await?;
+        return Ok(());
+    }
+
+    /// confirms auth record's new email address.
+    /// config: the config.
+    pub async fn confirm_email_change<B>(
+        &mut self,
+        config: &RecordConfirmEmailChangeConfig<B>,
+    ) -> Result<(), RPocketError>
+    where
+        B: Serialize,
+    {
+        let url = self
+            .client
+            .base_url()
+            .join(format!("/api/collections/{}/confirm-email-change", self.collection).as_str())
+            .map_err(|e| RPocketError::UrlError(e))?;
+
+        let request_builder = self
+            .client
+            .request_builder(reqwest::Method::POST, url.as_str())
+            .header(reqwest::header::CONTENT_TYPE.as_str(), "application/json")
+            .query(&config.query_params)
             .json(&config);
 
         self.send_request(request_builder).await?;
@@ -1493,6 +1537,37 @@ mod test {
 
         let response = record_service
             .request_email_change::<HashMap<String, String>>(&config)
+            .await;
+
+        mock.assert_async().await;
+        response.unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_record_confirm_email_change() {
+        let mut server = mockito::Server::new();
+        let url = server.url();
+
+        let mock = server
+            .mock("POST", "/api/collections/test/confirm-email-change")
+            .with_status(204)
+            .with_header("Accept-Language", "en")
+            .match_header(reqwest::header::CONTENT_TYPE.as_str(), "application/json")
+            .match_body(r#"{"token":"test","password":"test"}"#)
+            .create_async()
+            .await;
+
+        let mut base = PocketBase::new(url.as_str(), "en");
+        let mut record_service = RecordService::new(&mut base, "test");
+        let config = RecordConfirmEmailChangeConfig::<HashMap<String, String>> {
+            token: String::from_str("test").unwrap(),
+            password: String::from_str("test").unwrap(),
+            body: HashMap::new(),
+            query_params: Vec::new(),
+        };
+
+        let response = record_service
+            .confirm_email_change::<HashMap<String, String>>(&config)
             .await;
 
         mock.assert_async().await;
