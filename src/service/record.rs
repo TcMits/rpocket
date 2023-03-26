@@ -150,6 +150,15 @@ pub struct RecordRequestVerificationConfig<T> {
     pub query_params: Vec<(String, String)>,
 }
 
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct RecordConfirmVerificationConfig<T> {
+    pub token: String,
+    #[serde(flatten)]
+    pub body: T,
+    #[serde(skip)]
+    pub query_params: Vec<(String, String)>,
+}
+
 pub struct RecordService<'a> {
     client: &'a mut dyn crate::rpocket::PocketBaseClient,
     collection: &'a str,
@@ -578,6 +587,31 @@ impl<'a> RecordService<'a> {
             .client
             .base_url()
             .join(format!("/api/collections/{}/request-verification", self.collection).as_str())
+            .map_err(|e| RPocketError::UrlError(e))?;
+
+        let request_builder = self
+            .client
+            .request_builder(reqwest::Method::POST, url.as_str())
+            .header(reqwest::header::CONTENT_TYPE.as_str(), "application/json")
+            .json(&config);
+
+        self.send_request(request_builder).await?;
+        return Ok(());
+    }
+
+    /// confirms auth record verification email request.
+    /// config: the config.
+    pub async fn confirm_verification<B>(
+        &mut self,
+        config: &RecordConfirmVerificationConfig<B>,
+    ) -> Result<(), RPocketError>
+    where
+        B: Serialize,
+    {
+        let url = self
+            .client
+            .base_url()
+            .join(format!("/api/collections/{}/confirm-verification", self.collection).as_str())
             .map_err(|e| RPocketError::UrlError(e))?;
 
         let request_builder = self
@@ -1364,6 +1398,36 @@ mod test {
 
         let response = record_service
             .request_verification::<HashMap<String, String>>(&config)
+            .await;
+
+        mock.assert_async().await;
+        response.unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_record_confirm_verification() {
+        let mut server = mockito::Server::new();
+        let url = server.url();
+
+        let mock = server
+            .mock("POST", "/api/collections/test/confirm-verification")
+            .with_status(204)
+            .with_header("Accept-Language", "en")
+            .match_header(reqwest::header::CONTENT_TYPE.as_str(), "application/json")
+            .match_body(r#"{"token":"test"}"#)
+            .create_async()
+            .await;
+
+        let mut base = PocketBase::new(url.as_str(), "en");
+        let mut record_service = RecordService::new(&mut base, "test");
+        let config = RecordConfirmVerificationConfig::<HashMap<String, String>> {
+            token: String::from_str("test").unwrap(),
+            body: HashMap::new(),
+            query_params: Vec::new(),
+        };
+
+        let response = record_service
+            .confirm_verification::<HashMap<String, String>>(&config)
             .await;
 
         mock.assert_async().await;
