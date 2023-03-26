@@ -159,6 +159,16 @@ pub struct RecordConfirmVerificationConfig<T> {
     pub query_params: Vec<(String, String)>,
 }
 
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct RecordRequestEmailChangeConfig<T> {
+    #[serde(rename = "newEmail")]
+    pub new_email: String,
+    #[serde(flatten)]
+    pub body: T,
+    #[serde(skip)]
+    pub query_params: Vec<(String, String)>,
+}
+
 pub struct RecordService<'a> {
     client: &'a mut dyn crate::rpocket::PocketBaseClient,
     collection: &'a str,
@@ -612,6 +622,31 @@ impl<'a> RecordService<'a> {
             .client
             .base_url()
             .join(format!("/api/collections/{}/confirm-verification", self.collection).as_str())
+            .map_err(|e| RPocketError::UrlError(e))?;
+
+        let request_builder = self
+            .client
+            .request_builder(reqwest::Method::POST, url.as_str())
+            .header(reqwest::header::CONTENT_TYPE.as_str(), "application/json")
+            .json(&config);
+
+        self.send_request(request_builder).await?;
+        return Ok(());
+    }
+
+    /// sends an email change request to the authenticated record model.
+    /// config: the config.
+    pub async fn request_email_change<B>(
+        &mut self,
+        config: &RecordRequestEmailChangeConfig<B>,
+    ) -> Result<(), RPocketError>
+    where
+        B: Serialize,
+    {
+        let url = self
+            .client
+            .base_url()
+            .join(format!("/api/collections/{}/request-email-change", self.collection).as_str())
             .map_err(|e| RPocketError::UrlError(e))?;
 
         let request_builder = self
@@ -1428,6 +1463,36 @@ mod test {
 
         let response = record_service
             .confirm_verification::<HashMap<String, String>>(&config)
+            .await;
+
+        mock.assert_async().await;
+        response.unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_record_request_email_change() {
+        let mut server = mockito::Server::new();
+        let url = server.url();
+
+        let mock = server
+            .mock("POST", "/api/collections/test/request-email-change")
+            .with_status(204)
+            .with_header("Accept-Language", "en")
+            .match_header(reqwest::header::CONTENT_TYPE.as_str(), "application/json")
+            .match_body(r#"{"newEmail":"example@example.com"}"#)
+            .create_async()
+            .await;
+
+        let mut base = PocketBase::new(url.as_str(), "en");
+        let mut record_service = RecordService::new(&mut base, "test");
+        let config = RecordRequestEmailChangeConfig::<HashMap<String, String>> {
+            new_email: String::from_str("example@example.com").unwrap(),
+            body: HashMap::new(),
+            query_params: Vec::new(),
+        };
+
+        let response = record_service
+            .request_email_change::<HashMap<String, String>>(&config)
             .await;
 
         mock.assert_async().await;
