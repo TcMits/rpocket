@@ -129,6 +129,18 @@ pub struct RecordRequestPasswordResetConfig<T> {
     pub query_params: Vec<(String, String)>,
 }
 
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct RecordConfirmPasswordResetConfig<T> {
+    pub token: String,
+    pub password: String,
+    #[serde(rename = "passwordConfirm")]
+    pub password_confirm: String,
+    #[serde(flatten)]
+    pub body: T,
+    #[serde(skip)]
+    pub query_params: Vec<(String, String)>,
+}
+
 pub struct RecordService<'a> {
     client: &'a mut dyn crate::rpocket::PocketBaseClient,
     collection: &'a str,
@@ -497,6 +509,37 @@ impl<'a> RecordService<'a> {
             .join(
                 format!(
                     "/api/collections/{}/request-password-reset",
+                    self.collection
+                )
+                .as_str(),
+            )
+            .map_err(|e| RPocketError::UrlError(e))?;
+
+        let request_builder = self
+            .client
+            .request_builder(reqwest::Method::POST, url.as_str())
+            .header(reqwest::header::CONTENT_TYPE.as_str(), "application/json")
+            .json(&config);
+
+        self.send_request(request_builder).await?;
+        return Ok(());
+    }
+
+    /// confirms auth record password reset request.
+    /// config: the config.
+    pub async fn confirm_password_reset<B>(
+        &mut self,
+        config: &RecordConfirmPasswordResetConfig<B>,
+    ) -> Result<(), RPocketError>
+    where
+        B: Serialize,
+    {
+        let url = self
+            .client
+            .base_url()
+            .join(
+                format!(
+                    "/api/collections/{}/confirm-password-reset",
                     self.collection
                 )
                 .as_str(),
@@ -1225,6 +1268,38 @@ mod test {
 
         let response = record_service
             .request_password_reset::<HashMap<String, String>>(&config)
+            .await;
+
+        mock.assert_async().await;
+        response.unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_record_confirm_password_reset() {
+        let mut server = mockito::Server::new();
+        let url = server.url();
+
+        let mock = server
+            .mock("POST", "/api/collections/test/confirm-password-reset")
+            .with_status(204)
+            .with_header("Accept-Language", "en")
+            .match_header(reqwest::header::CONTENT_TYPE.as_str(), "application/json")
+            .match_body(r#"{"token":"test","password":"test","passwordConfirm":"test"}"#)
+            .create_async()
+            .await;
+
+        let mut base = PocketBase::new(url.as_str(), "en");
+        let mut record_service = RecordService::new(&mut base, "test");
+        let config = RecordConfirmPasswordResetConfig::<HashMap<String, String>> {
+            token: String::from_str("test").unwrap(),
+            password: String::from_str("test").unwrap(),
+            password_confirm: String::from_str("test").unwrap(),
+            body: HashMap::new(),
+            query_params: Vec::new(),
+        };
+
+        let response = record_service
+            .confirm_password_reset::<HashMap<String, String>>(&config)
             .await;
 
         mock.assert_async().await;
