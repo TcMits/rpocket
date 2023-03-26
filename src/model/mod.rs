@@ -46,3 +46,14 @@ pub struct ListResult<T> {
     pub total_items: i64,
     pub items: Vec<T>,
 }
+
+#[derive(Debug, PartialEq, Default, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ExternalAuth {
+    #[serde(flatten)]
+    pub base: BaseModel,
+    pub record_id: String,
+    pub collection_id: String,
+    pub provider: String,
+    pub provider_id: String,
+}

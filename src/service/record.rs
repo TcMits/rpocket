@@ -179,6 +179,12 @@ pub struct RecordConfirmEmailChangeConfig<T> {
     pub query_params: Vec<(String, String)>,
 }
 
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct RecordListExternalAuthsConfig {
+    pub id: String,
+    pub query_params: Vec<(String, String)>,
+}
+
 pub struct RecordService<'a> {
     client: &'a mut dyn crate::rpocket::PocketBaseClient,
     collection: &'a str,
@@ -702,12 +708,47 @@ impl<'a> RecordService<'a> {
         self.send_request(request_builder).await?;
         return Ok(());
     }
+
+    /// lists all linked external auth providers for the specified auth record.
+    /// config: the config.
+    pub async fn list_external_auths<T>(
+        &mut self,
+        config: &RecordListExternalAuthsConfig,
+    ) -> Result<Vec<T>, RPocketError>
+    where
+        T: serde::de::DeserializeOwned,
+    {
+        let url = self
+            .client
+            .base_url()
+            .join(
+                format!(
+                    "/api/collections/{}/records/{}/external-auths",
+                    self.collection, config.id
+                )
+                .as_str(),
+            )
+            .map_err(|e| RPocketError::UrlError(e))?;
+
+        let request_builder = self
+            .client
+            .request_builder(reqwest::Method::GET, url.as_str())
+            .header(reqwest::header::CONTENT_TYPE.as_str(), "application/json")
+            .query(&config.query_params);
+
+        let response = self.send_request(request_builder).await?;
+
+        return response
+            .json::<Vec<T>>()
+            .await
+            .map_err(|e| RPocketError::RequestError(e));
+    }
 }
 
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::model::{BaseModel, ExpandValue, Record};
+    use crate::model::{BaseModel, ExpandValue, ExternalAuth, Record};
     use crate::rpocket::PocketBase;
     use std::collections::HashMap;
     use std::str::FromStr;
@@ -1572,5 +1613,62 @@ mod test {
 
         mock.assert_async().await;
         response.unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_record_list_external_auths() {
+        let mut server = mockito::Server::new();
+        let url = server.url();
+
+        let mock = server
+            .mock("GET", "/api/collections/test/records/test/external-auths")
+            .with_status(200)
+            .with_header("Accept-Language", "en")
+            .match_header(reqwest::header::CONTENT_TYPE.as_str(), "application/json")
+            .with_body(
+                r#"[
+               {
+      "id": "8171022dc95a4e8",
+      "created": "2022-09-01 10:24:18.434",
+      "updated": "2022-09-01 10:24:18.889",
+      "recordId": "e22581b6f1d44ea",
+      "collectionId": "POWMOh0W6IoLUAI",
+      "provider": "google",
+      "providerId": "2da15468800514p"
+    },
+    {
+      "id": "171022dc895a4e8",
+      "created": "2022-09-01 10:24:18.434",
+      "updated": "2022-09-01 10:24:18.889",
+      "recordId": "e22581b6f1d44ea",
+      "collectionId": "POWMOh0W6IoLUAI",
+      "provider": "twitter",
+      "providerId": "720688005140514"
+    } ]"#,
+            )
+            .create_async()
+            .await;
+
+        let mut base = PocketBase::new(url.as_str(), "en");
+        let mut record_service = RecordService::new(&mut base, "test");
+        let config = RecordListExternalAuthsConfig {
+            id: String::from_str("test").unwrap(),
+            query_params: Vec::new(),
+        };
+
+        let response = record_service
+            .list_external_auths::<ExternalAuth>(&config)
+            .await;
+
+        mock.assert_async().await;
+        let response = response.unwrap();
+        assert_eq!(response.len(), 2);
+        assert_eq!(response[0].base.id, "8171022dc95a4e8");
+        assert_eq!(response[0].base.created, "2022-09-01 10:24:18.434");
+        assert_eq!(response[0].base.updated, "2022-09-01 10:24:18.889");
+        assert_eq!(response[0].record_id, "e22581b6f1d44ea");
+        assert_eq!(response[0].collection_id, "POWMOh0W6IoLUAI");
+        assert_eq!(response[0].provider, "google");
+        assert_eq!(response[0].provider_id, "2da15468800514p");
     }
 }
