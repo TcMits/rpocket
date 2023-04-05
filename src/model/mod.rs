@@ -94,3 +94,18 @@ pub struct Collection {
     pub delete_rule: Option<String>,
     pub options: HashMap<String, serde_json::Value>,
 }
+
+#[derive(Debug, PartialEq, Default, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LogRequest {
+    #[serde(flatten)]
+    pub base: BaseModel,
+    pub method: String,
+    pub status: i64,
+    pub auth: String,
+    pub remote_ip: String,
+    pub user_ip: String,
+    pub referer: String,
+    pub user_agent: String,
+    pub meta: HashMap<String, serde_json::Value>,
+}

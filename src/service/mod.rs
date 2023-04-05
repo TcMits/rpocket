@@ -6,6 +6,7 @@ use crate::{error::RPocketError, model::ListResult};
 
 pub mod admin;
 pub mod collection;
+pub mod log;
 pub mod record;
 
 pub const DEFAULT_PER_PAGE: i64 = 30;

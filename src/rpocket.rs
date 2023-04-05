@@ -54,6 +54,14 @@ pub trait PocketBaseClient {
     {
         return service::collection::CollectionService::new(self);
     }
+
+    /// returns log service.
+    fn log<'a>(&'a mut self) -> service::log::LogService<'a, Self>
+    where
+        Self: Sized,
+    {
+        return service::log::LogService::new(self);
+    }
 }
 
 // PocketBaseRequest is the request for PocketBase.
