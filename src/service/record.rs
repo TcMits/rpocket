@@ -220,13 +220,11 @@ impl<'a> RecordService<'a> {
     /// config: the config.
     pub async fn get_list<T>(
         &mut self,
-        config: Option<&RecordGetListConfig>,
+        config: &RecordGetListConfig,
     ) -> Result<ListResult<T>, RPocketError>
     where
         T: serde::de::DeserializeOwned,
     {
-        let default_config = &RecordGetListConfig::default();
-        let config = config.unwrap_or(default_config);
         let url = self
             .client
             .base_url()
@@ -784,7 +782,7 @@ impl<'a> RecordService<'a> {
 mod test {
     use super::*;
     use crate::model::{BaseModel, ExpandValue, ExternalAuth, Record};
-    use crate::rpocket::PocketBase;
+    use crate::rpocket::{PocketBase, PocketBaseClient};
     use std::collections::HashMap;
     use std::str::FromStr;
 
@@ -852,9 +850,7 @@ mod test {
             ..Default::default()
         };
 
-        let response = record_service
-            .get_list::<Record>(Option::Some(&config))
-            .await;
+        let response = record_service.get_list::<Record>(&config).await;
         mock.assert_async().await;
         let response = response.unwrap();
 
@@ -1319,6 +1315,24 @@ mod test {
 
         mock.assert_async().await;
         let response = response.unwrap();
+
+        let auth_state_token = base.auth_state().token().await.unwrap().unwrap();
+        let auth_record = match base.auth_state().user_or_admin().await.unwrap().unwrap() {
+            AuthPayload::User(user) => user,
+            _ => unreachable!(),
+        };
+
+        assert!(auth_state_token == "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsInR5cGUiOiJhdXRoUmVjb3JkIiwiY29sbGVjdGlvbklkIjoiX3BiX3VzZXJzX2F1dGhfIiwiZXhwIjoyMjA4OTg1MjYxfQ.UwD8JvkbQtXpymT09d7J6fdA0aP9g4FJ1GPh_ggEkzc");
+        assert!(auth_record.base.id == "8171022dc95a4ed");
+        assert!(auth_record.collection_id == "d2972397d45614e");
+        assert!(auth_record.collection_name == "users");
+        assert!(auth_record.base.created == "2022-06-24 06:24:18.434Z");
+        assert!(auth_record.base.updated == "2022-06-24 06:24:18.889Z");
+        assert!(auth_record.data["username"] == "test@example.com");
+        assert!(auth_record.data["email"] == "test@example.com");
+        assert!(auth_record.data["verified"] == false);
+        assert!(auth_record.data["emailVisibility"] == true);
+        assert!(auth_record.data["someCustomField"] == "example 123");
 
         assert!(response.token == "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsInR5cGUiOiJhdXRoUmVjb3JkIiwiY29sbGVjdGlvbklkIjoiX3BiX3VzZXJzX2F1dGhfIiwiZXhwIjoyMjA4OTg1MjYxfQ.UwD8JvkbQtXpymT09d7J6fdA0aP9g4FJ1GPh_ggEkzc");
         assert!(response.record.base.id == "8171022dc95a4ed");

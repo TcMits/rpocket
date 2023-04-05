@@ -22,6 +22,14 @@ pub trait PocketBaseClient {
     {
         return service::record::RecordService::new(self, name);
     }
+
+    /// return admin service.
+    fn admin<'a>(&'a mut self) -> service::admin::AdminService<'a>
+    where
+        Self: Sized,
+    {
+        return service::admin::AdminService::new(self);
+    }
 }
 
 // PocketBaseRequest is the request for PocketBase.
