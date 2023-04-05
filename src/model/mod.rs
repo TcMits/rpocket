@@ -2,6 +2,12 @@ use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 
+pub const DEFAULT_COLLECTION_TYPE: &str = "base";
+
+pub fn get_default_collection_type() -> String {
+    return DEFAULT_COLLECTION_TYPE.to_string();
+}
+
 #[derive(Debug, PartialEq, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct BaseModel {
@@ -56,4 +62,35 @@ pub struct ExternalAuth {
     pub collection_id: String,
     pub provider: String,
     pub provider_id: String,
+}
+
+#[derive(Debug, PartialEq, Default, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SchemaField {
+    pub id: String,
+    pub name: String,
+    #[serde(rename = "type")]
+    pub field_type: String,
+    pub system: bool,
+    pub required: bool,
+    pub options: HashMap<String, serde_json::Value>,
+}
+
+#[derive(Debug, PartialEq, Default, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Collection {
+    #[serde(flatten)]
+    pub base: BaseModel,
+    pub name: String,
+    #[serde(rename = "type", default = "get_default_collection_type")]
+    pub collection_type: String,
+    pub schema: Vec<SchemaField>,
+    pub indexes: Vec<String>,
+    pub system: bool,
+    pub list_rule: Option<String>,
+    pub view_rule: Option<String>,
+    pub create_rule: Option<String>,
+    pub update_rule: Option<String>,
+    pub delete_rule: Option<String>,
+    pub options: HashMap<String, serde_json::Value>,
 }

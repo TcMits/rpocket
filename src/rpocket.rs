@@ -14,21 +14,45 @@ pub trait PocketBaseClient {
         request: PocketBaseRequest,
     ) -> Result<PocketBaseResponse, RPocketError>;
 
-    /// return record service.
+    /// returns http service.
+    fn http<'a>(&'a mut self) -> service::HTTPService<'a, Self>
+    where
+        Self: Sized,
+    {
+        return service::HTTPService::new(self);
+    }
+
+    /// returns crud service.
+    fn crud<'a>(&'a mut self, base_path: &'a str) -> service::CRUDService<'a, Self>
+    where
+        Self: Sized,
+    {
+        return service::CRUDService::new(self, base_path);
+    }
+
+    /// returns record service.
     /// name: the collection name.
-    fn collection<'a>(&'a mut self, name: &'a str) -> service::record::RecordService<'a>
+    fn record<'a>(&'a mut self, name: &'a str) -> service::record::RecordService<'a, Self>
     where
         Self: Sized,
     {
         return service::record::RecordService::new(self, name);
     }
 
-    /// return admin service.
-    fn admin<'a>(&'a mut self) -> service::admin::AdminService<'a>
+    /// returns admin service.
+    fn admin<'a>(&'a mut self) -> service::admin::AdminService<'a, Self>
     where
         Self: Sized,
     {
         return service::admin::AdminService::new(self);
+    }
+
+    /// returns collection service.
+    fn collection<'a>(&'a mut self) -> service::collection::CollectionService<'a, Self>
+    where
+        Self: Sized,
+    {
+        return service::collection::CollectionService::new(self);
     }
 }
 
@@ -478,8 +502,20 @@ mod test {
     }
 
     #[test]
+    fn test_pocket_base_record() {
+        let mut base = PocketBase::new("http://localhost:8080", "en");
+        base.record("test");
+    }
+
+    #[test]
+    fn test_pocket_base_admin() {
+        let mut base = PocketBase::new("http://localhost:8080", "en");
+        base.admin();
+    }
+
+    #[test]
     fn test_pocket_base_collection() {
         let mut base = PocketBase::new("http://localhost:8080", "en");
-        base.collection("test");
+        base.collection();
     }
 }

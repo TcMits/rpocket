@@ -1,0 +1,140 @@
+use serde::{Deserialize, Serialize};
+
+use crate::{error::RPocketError, model::Collection, service};
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct CollectionGetListConfig {
+    pub per_page: i64,
+    pub page: i64,
+    pub query_params: Vec<(String, String)>,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct CollectionGetOneConfig {
+    pub id: String,
+    pub query_params: Vec<(String, String)>,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CollectionImportConfig<T> {
+    pub collections: Vec<Collection>,
+    pub delete_missing: bool,
+    #[serde(flatten)]
+    pub body: T,
+    #[serde(skip)]
+    pub query_params: Vec<(String, String)>,
+}
+
+pub struct CollectionService<'a, C> {
+    client: &'a mut C,
+    collection_base_path: String,
+}
+
+impl<'a, C> CollectionService<'a, C>
+where
+    C: crate::rpocket::PocketBaseClient + Sized,
+{
+    /// create a new CollectionService.
+    pub fn new(client: &'a mut C) -> Self {
+        return CollectionService {
+            client,
+            collection_base_path: "api/collections".to_string(),
+        };
+    }
+
+    /// returns crud service.
+    pub fn crud(&'a mut self) -> service::CRUDService<'a, C> {
+        return self.client.crud(&self.collection_base_path);
+    }
+
+    /// imports the provided collections.
+    pub async fn import<B>(
+        &'a mut self,
+        config: &CollectionImportConfig<B>,
+    ) -> Result<(), RPocketError>
+    where
+        B: serde::Serialize,
+    {
+        let url = self
+            .client
+            .base_url()
+            .join(format!("{}/import", self.collection_base_path).as_str())
+            .map_err(|e| RPocketError::UrlError(e))?;
+
+        let request_builder = self
+            .client
+            .request_builder(reqwest::Method::PUT, url.as_str())
+            .header(reqwest::header::CONTENT_TYPE.as_str(), "application/json")
+            .query(&config.query_params)
+            .json(&config);
+
+        self.client.http().send(request_builder).await?;
+        return Ok(());
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use std::collections::HashMap;
+
+    use crate::{model::BaseModel, PocketBase};
+
+    use super::*;
+
+    #[test]
+    fn test_record_crud() {
+        let mut base = PocketBase::new("http://test.com", "en");
+        let mut admin_service = CollectionService::new(&mut base);
+        let crud = admin_service.crud();
+
+        assert!(crud.base_path == "api/collections");
+    }
+
+    #[tokio::test]
+    async fn test_collection_import() {
+        let mut server = mockito::Server::new();
+        let url = server.url();
+
+        let mock = server
+            .mock("PUT", "/api/collections/import")
+            .with_status(204)
+            .with_header("Accept-Language", "en")
+            .match_header(reqwest::header::CONTENT_TYPE.as_str(), "application/json")
+            .match_body(
+                r#"{"collections":[{"id":"1","created":"","updated":"","name":"test","type":"","schema":[],"indexes":[],"system":false,"listRule":null,"viewRule":null,"createRule":null,"updateRule":null,"deleteRule":null,"options":{}},{"id":"2","created":"","updated":"","name":"test2","type":"","schema":[],"indexes":[],"system":false,"listRule":null,"viewRule":null,"createRule":null,"updateRule":null,"deleteRule":null,"options":{}}],"deleteMissing":false}"#,
+            )
+            .create_async()
+            .await;
+
+        let mut base = PocketBase::new(url.as_str(), "en");
+        let mut collection_service = CollectionService::new(&mut base);
+        let config = CollectionImportConfig::<HashMap<String, String>> {
+            collections: vec![
+                Collection {
+                    base: BaseModel {
+                        id: "1".to_string(),
+                        ..Default::default()
+                    },
+                    name: "test".to_string(),
+                    ..Default::default()
+                },
+                Collection {
+                    base: BaseModel {
+                        id: "2".to_string(),
+                        ..Default::default()
+                    },
+                    name: "test2".to_string(),
+                    ..Default::default()
+                },
+            ],
+            ..Default::default()
+        };
+
+        let response = collection_service
+            .import::<HashMap<String, String>>(&config)
+            .await;
+        mock.assert_async().await;
+        response.unwrap();
+    }
+}
