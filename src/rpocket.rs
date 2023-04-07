@@ -9,6 +9,7 @@ pub trait PocketBaseClient {
     fn base_url(&self) -> &url::Url;
     fn auth_state(&self) -> Arc<dyn auth_storage::AuthState + Sync + Send>;
     fn request_builder(&self, method: reqwest::Method, url: &str) -> reqwest::RequestBuilder;
+
     async fn send(
         &mut self,
         request: PocketBaseRequest,

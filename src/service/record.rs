@@ -173,7 +173,6 @@ where
     }
 
     /// list auth methods
-    /// config: the config.
     pub async fn list_auth_methods<T>(
         &mut self,
         config: &RecordListAuthMethodsConfig,
@@ -235,7 +234,6 @@ where
     }
 
     /// authenticate with password
-    /// config: the config.
     pub async fn auth_with_password<T, B>(
         &mut self,
         config: &RecordAuthWithPasswordConfig<B>,
@@ -270,7 +268,6 @@ where
     }
 
     /// authenticate with oauth2
-    /// config: the config.
     pub async fn auth_with_oauth2<T, B>(
         &mut self,
         config: &RecordAuthWithOAuth2Config<B>,
@@ -305,7 +302,6 @@ where
     }
 
     /// refreshes the current authenticated record instance and
-    /// config: the config
     pub async fn auth_refresh<T, B>(
         &mut self,
         config: &RecordAuthRefreshConfig<B>,
@@ -339,8 +335,7 @@ where
             .map_err(|e| RPocketError::RequestError(e))?);
     }
 
-    /// ends auth record password reset request.
-    /// config: the config.
+    /// sends auth record password reset request.
     pub async fn request_password_reset<B>(
         &mut self,
         config: &RecordRequestPasswordResetConfig<B>,
@@ -366,7 +361,6 @@ where
     }
 
     /// confirms auth record password reset request.
-    /// config: the config.
     pub async fn confirm_password_reset<B>(
         &mut self,
         config: &RecordConfirmPasswordResetConfig<B>,
@@ -392,7 +386,6 @@ where
     }
 
     /// sends auth record verification email request.
-    /// config: the config.
     pub async fn request_verification<B>(
         &mut self,
         config: &RecordRequestVerificationConfig<B>,
@@ -419,7 +412,6 @@ where
     }
 
     /// confirms auth record verification email request.
-    /// config: the config.
     pub async fn confirm_verification<B>(
         &mut self,
         config: &RecordConfirmVerificationConfig<B>,
@@ -446,7 +438,6 @@ where
     }
 
     /// sends an email change request to the authenticated record model.
-    /// config: the config.
     pub async fn request_email_change<B>(
         &mut self,
         config: &RecordRequestEmailChangeConfig<B>,
@@ -473,7 +464,6 @@ where
     }
 
     /// confirms auth record's new email address.
-    /// config: the config.
     pub async fn confirm_email_change<B>(
         &mut self,
         config: &RecordConfirmEmailChangeConfig<B>,
@@ -500,7 +490,6 @@ where
     }
 
     /// lists all linked external auth providers for the specified auth record.
-    /// config: the config.
     pub async fn list_external_auths<T>(
         &mut self,
         config: &RecordListExternalAuthsConfig,
@@ -535,7 +524,6 @@ where
     }
 
     /// unlink a single external auth provider from the specified auth record.
-    /// config: the config.
     pub async fn unlink_external_auth(
         &mut self,
         config: &RecordUnlinkExternalAuthConfig,

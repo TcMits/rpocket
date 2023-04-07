@@ -6,8 +6,10 @@ use crate::{error::RPocketError, model::ListResult};
 
 pub mod admin;
 pub mod collection;
+pub mod health;
 pub mod log;
 pub mod record;
+pub mod setting;
 
 pub const DEFAULT_PER_PAGE: i64 = 30;
 pub const DEFAULT_PAGE: i64 = 1;
@@ -94,7 +96,6 @@ where
     }
 
     /// get a list of records.
-    /// config: the config.
     pub async fn get_list<T>(
         &mut self,
         config: &CRUDGetListConfig,
@@ -133,7 +134,6 @@ where
     }
 
     /// get a record.
-    /// config: the config.
     pub async fn get_one<T>(&mut self, config: &CRUDGetOneConfig) -> Result<T, RPocketError>
     where
         T: serde::de::DeserializeOwned,
@@ -238,7 +238,6 @@ where
     }
 
     /// delete a record
-    /// config: the config.
     pub async fn delete(&mut self, config: &CRUDDeleteConfig) -> Result<(), RPocketError> {
         let url = self
             .client

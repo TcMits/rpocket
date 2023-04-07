@@ -3,22 +3,9 @@ use serde::{Deserialize, Serialize};
 use crate::{error::RPocketError, model::Collection, service};
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct CollectionGetListConfig {
-    pub per_page: i64,
-    pub page: i64,
-    pub query_params: Vec<(String, String)>,
-}
-
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct CollectionGetOneConfig {
-    pub id: String,
-    pub query_params: Vec<(String, String)>,
-}
-
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
 pub struct CollectionImportConfig<T> {
     pub collections: Vec<Collection>,
+    #[serde(rename = "deleteMissing")]
     pub delete_missing: bool,
     #[serde(flatten)]
     pub body: T,
@@ -83,7 +70,7 @@ mod test {
     use super::*;
 
     #[test]
-    fn test_record_crud() {
+    fn test_collection_crud() {
         let mut base = PocketBase::new("http://test.com", "en");
         let mut admin_service = CollectionService::new(&mut base);
         let crud = admin_service.crud();

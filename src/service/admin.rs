@@ -113,7 +113,6 @@ where
     }
 
     /// authenticate with password
-    /// config: the config.
     pub async fn auth_with_password<T, B>(
         &mut self,
         config: &AdminAuthWithPasswordConfig<B>,
@@ -148,7 +147,6 @@ where
     }
 
     /// refreshes the current authenticated admin instance and
-    /// config: the config
     pub async fn auth_refresh<T, B>(
         &mut self,
         config: &AdminAuthRefreshConfig<B>,
@@ -183,7 +181,6 @@ where
     }
 
     /// ends auth admin password reset request.
-    /// config: the config.
     pub async fn request_password_reset<B>(
         &mut self,
         config: &AdminRequestPasswordResetConfig<B>,
@@ -210,7 +207,6 @@ where
     }
 
     /// confirms auth admin password reset request.
-    /// config: the config.
     pub async fn confirm_password_reset<B>(
         &mut self,
         config: &AdminConfirmPasswordResetConfig<B>,
@@ -244,7 +240,7 @@ mod test {
     use std::{collections::HashMap, str::FromStr};
 
     #[test]
-    fn test_record_crud() {
+    fn test_admin_crud() {
         let mut base = PocketBase::new("http://test.com", "en");
         let mut admin_service = AdminService::new(&mut base);
         let crud = admin_service.crud();
