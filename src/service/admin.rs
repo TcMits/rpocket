@@ -87,10 +87,7 @@ where
         T: serde::de::DeserializeOwned,
     {
         let auth_state = self.client.auth_state();
-        let auth_response = response
-            .json::<AdminAuthResponse>()
-            .await
-            .map_err(|e| RPocketError::RequestError(e))?;
+        let auth_response = response.json::<AdminAuthResponse>().await?;
 
         let token = auth_response.token;
         let extra = auth_response.extra;
@@ -109,10 +106,10 @@ where
             extra,
         };
 
-        let auth_response =
-            serde_json::to_value(&auth_response).map_err(|e| RPocketError::SerdeError(e))?;
+        let auth_response = serde_json::to_value(&auth_response)?;
+        let response = serde_json::from_value(auth_response)?;
 
-        return serde_json::from_value(auth_response).map_err(|e| RPocketError::SerdeError(e));
+        return Ok(response);
     }
 
     /// authenticate with password
@@ -127,8 +124,7 @@ where
         let url = self
             .client
             .base_url()
-            .join(format!("{}/auth-with-password", self.admin_base_path).as_str())
-            .map_err(|e| RPocketError::UrlError(e))?;
+            .join(format!("{}/auth-with-password", self.admin_base_path).as_str())?;
 
         let request_builder = self
             .client
@@ -143,10 +139,7 @@ where
             return self.save_auth_response::<T>(response).await;
         }
 
-        return Ok(response
-            .json::<T>()
-            .await
-            .map_err(|e| RPocketError::RequestError(e))?);
+        return Ok(response.json::<T>().await?);
     }
 
     /// refreshes the current authenticated admin instance and
@@ -161,8 +154,7 @@ where
         let url = self
             .client
             .base_url()
-            .join(format!("{}/auth-refresh", self.admin_base_path).as_str())
-            .map_err(|e| RPocketError::UrlError(e))?;
+            .join(format!("{}/auth-refresh", self.admin_base_path).as_str())?;
 
         let request_builder = self
             .client
@@ -177,10 +169,7 @@ where
             return self.save_auth_response::<T>(response).await;
         }
 
-        return Ok(response
-            .json::<T>()
-            .await
-            .map_err(|e| RPocketError::RequestError(e))?);
+        return Ok(response.json::<T>().await?);
     }
 
     /// ends auth admin password reset request.
@@ -194,8 +183,7 @@ where
         let url = self
             .client
             .base_url()
-            .join(format!("{}/request-password-reset", self.admin_base_path).as_str())
-            .map_err(|e| RPocketError::UrlError(e))?;
+            .join(format!("{}/request-password-reset", self.admin_base_path).as_str())?;
 
         let request_builder = self
             .client
@@ -220,8 +208,7 @@ where
         let url = self
             .client
             .base_url()
-            .join(format!("{}/confirm-password-reset", self.admin_base_path).as_str())
-            .map_err(|e| RPocketError::UrlError(e))?;
+            .join(format!("{}/confirm-password-reset", self.admin_base_path).as_str())?;
 
         let request_builder = self
             .client

@@ -73,11 +73,7 @@ where
     where
         T: serde::de::DeserializeOwned,
     {
-        let url = self
-            .client
-            .base_url()
-            .join("api/settings")
-            .map_err(|e| RPocketError::UrlError(e))?;
+        let url = self.client.base_url().join("api/settings")?;
 
         let request_builder = self
             .client
@@ -87,10 +83,7 @@ where
 
         let response = self.client.http().send(request_builder).await?;
 
-        return Ok(response
-            .json::<T>()
-            .await
-            .map_err(|e| RPocketError::RequestError(e))?);
+        return Ok(response.json::<T>().await?);
     }
 
     /// updates the provided settings.
@@ -99,11 +92,7 @@ where
         T: serde::de::DeserializeOwned,
         B: serde::Serialize,
     {
-        let url = self
-            .client
-            .base_url()
-            .join("api/settings")
-            .map_err(|e| RPocketError::UrlError(e))?;
+        let url = self.client.base_url().join("api/settings")?;
 
         let request_builder = self
             .client
@@ -114,10 +103,7 @@ where
 
         let response = self.client.http().send(request_builder).await?;
 
-        return Ok(response
-            .json::<T>()
-            .await
-            .map_err(|e| RPocketError::RequestError(e))?);
+        return Ok(response.json::<T>().await?);
     }
 
     /// tests the provided s3 settings.
@@ -125,11 +111,7 @@ where
     where
         B: serde::Serialize,
     {
-        let url = self
-            .client
-            .base_url()
-            .join("api/settings/test/s3")
-            .map_err(|e| RPocketError::UrlError(e))?;
+        let url = self.client.base_url().join("api/settings/test/s3")?;
 
         let request_builder = self
             .client
@@ -151,11 +133,7 @@ where
     where
         B: serde::Serialize,
     {
-        let url = self
-            .client
-            .base_url()
-            .join("api/settings/test/email")
-            .map_err(|e| RPocketError::UrlError(e))?;
+        let url = self.client.base_url().join("api/settings/test/email")?;
 
         let request_builder = self
             .client
@@ -181,8 +159,7 @@ where
         let url = self
             .client
             .base_url()
-            .join("api/settings/apple/generate-client-secret")
-            .map_err(|e| RPocketError::UrlError(e))?;
+            .join("api/settings/apple/generate-client-secret")?;
 
         let request_builder = self
             .client
@@ -193,10 +170,7 @@ where
 
         let response = self.client.http().send(request_builder).await?;
 
-        return Ok(response
-            .json::<T>()
-            .await
-            .map_err(|e| RPocketError::RequestError(e))?);
+        return Ok(response.json::<T>().await?);
     }
 }
 

@@ -182,8 +182,7 @@ where
         let url = self
             .client
             .base_url()
-            .join(format!("api/collections/{}/auth-methods", self.collection).as_str())
-            .map_err(|e| RPocketError::UrlError(e))?;
+            .join(format!("api/collections/{}/auth-methods", self.collection).as_str())?;
 
         let request_builder = self
             .client
@@ -193,10 +192,7 @@ where
 
         let response = self.client.http().send(request_builder).await?;
 
-        return Ok(response
-            .json::<T>()
-            .await
-            .map_err(|e| RPocketError::RequestError(e))?);
+        return Ok(response.json::<T>().await?);
     }
 
     async fn save_auth_response<T>(
@@ -207,10 +203,7 @@ where
         T: serde::de::DeserializeOwned,
     {
         let auth_state = self.client.auth_state();
-        let auth_response = response
-            .json::<RecordAuthResponse<Record>>()
-            .await
-            .map_err(|e| RPocketError::RequestError(e))?;
+        let auth_response = response.json::<RecordAuthResponse<Record>>().await?;
 
         let token = auth_response.token;
         let meta = auth_response.meta;
@@ -229,10 +222,10 @@ where
             meta,
         };
 
-        let auth_response =
-            serde_json::to_value(&auth_response).map_err(|e| RPocketError::SerdeError(e))?;
+        let auth_response = serde_json::to_value(&auth_response)?;
+        let response = serde_json::from_value(auth_response)?;
 
-        return serde_json::from_value(auth_response).map_err(|e| RPocketError::SerdeError(e));
+        return Ok(response);
     }
 
     /// authenticate with password
@@ -247,8 +240,7 @@ where
         let url = self
             .client
             .base_url()
-            .join(format!("api/collections/{}/auth-with-password", self.collection).as_str())
-            .map_err(|e| RPocketError::UrlError(e))?;
+            .join(format!("api/collections/{}/auth-with-password", self.collection).as_str())?;
 
         let request_builder = self
             .client
@@ -263,10 +255,7 @@ where
             return self.save_auth_response::<T>(response).await;
         }
 
-        return Ok(response
-            .json::<T>()
-            .await
-            .map_err(|e| RPocketError::RequestError(e))?);
+        return Ok(response.json::<T>().await?);
     }
 
     /// authenticate with oauth2
@@ -281,8 +270,7 @@ where
         let url = self
             .client
             .base_url()
-            .join(format!("api/collections/{}/auth-with-oauth2", self.collection).as_str())
-            .map_err(|e| RPocketError::UrlError(e))?;
+            .join(format!("api/collections/{}/auth-with-oauth2", self.collection).as_str())?;
 
         let request_builder = self
             .client
@@ -297,10 +285,7 @@ where
             return self.save_auth_response::<T>(response).await;
         }
 
-        return Ok(response
-            .json::<T>()
-            .await
-            .map_err(|e| RPocketError::RequestError(e))?);
+        return Ok(response.json::<T>().await?);
     }
 
     /// refreshes the current authenticated record instance and
@@ -315,8 +300,7 @@ where
         let url = self
             .client
             .base_url()
-            .join(format!("api/collections/{}/auth-refresh", self.collection).as_str())
-            .map_err(|e| RPocketError::UrlError(e))?;
+            .join(format!("api/collections/{}/auth-refresh", self.collection).as_str())?;
 
         let request_builder = self
             .client
@@ -331,10 +315,7 @@ where
             return self.save_auth_response::<T>(response).await;
         }
 
-        return Ok(response
-            .json::<T>()
-            .await
-            .map_err(|e| RPocketError::RequestError(e))?);
+        return Ok(response.json::<T>().await?);
     }
 
     /// sends auth record password reset request.
@@ -348,8 +329,7 @@ where
         let url = self
             .client
             .base_url()
-            .join(format!("api/collections/{}/request-password-reset", self.collection).as_str())
-            .map_err(|e| RPocketError::UrlError(e))?;
+            .join(format!("api/collections/{}/request-password-reset", self.collection).as_str())?;
 
         let request_builder = self
             .client
@@ -373,8 +353,7 @@ where
         let url = self
             .client
             .base_url()
-            .join(format!("api/collections/{}/confirm-password-reset", self.collection).as_str())
-            .map_err(|e| RPocketError::UrlError(e))?;
+            .join(format!("api/collections/{}/confirm-password-reset", self.collection).as_str())?;
 
         let request_builder = self
             .client
@@ -398,8 +377,7 @@ where
         let url = self
             .client
             .base_url()
-            .join(format!("api/collections/{}/request-verification", self.collection).as_str())
-            .map_err(|e| RPocketError::UrlError(e))?;
+            .join(format!("api/collections/{}/request-verification", self.collection).as_str())?;
 
         let request_builder = self
             .client
@@ -424,8 +402,7 @@ where
         let url = self
             .client
             .base_url()
-            .join(format!("api/collections/{}/confirm-verification", self.collection).as_str())
-            .map_err(|e| RPocketError::UrlError(e))?;
+            .join(format!("api/collections/{}/confirm-verification", self.collection).as_str())?;
 
         let request_builder = self
             .client
@@ -450,8 +427,7 @@ where
         let url = self
             .client
             .base_url()
-            .join(format!("api/collections/{}/request-email-change", self.collection).as_str())
-            .map_err(|e| RPocketError::UrlError(e))?;
+            .join(format!("api/collections/{}/request-email-change", self.collection).as_str())?;
 
         let request_builder = self
             .client
@@ -476,8 +452,7 @@ where
         let url = self
             .client
             .base_url()
-            .join(format!("api/collections/{}/confirm-email-change", self.collection).as_str())
-            .map_err(|e| RPocketError::UrlError(e))?;
+            .join(format!("api/collections/{}/confirm-email-change", self.collection).as_str())?;
 
         let request_builder = self
             .client
@@ -499,17 +474,13 @@ where
     where
         T: serde::de::DeserializeOwned,
     {
-        let url = self
-            .client
-            .base_url()
-            .join(
-                format!(
-                    "api/collections/{}/records/{}/external-auths",
-                    self.collection, config.id
-                )
-                .as_str(),
+        let url = self.client.base_url().join(
+            format!(
+                "api/collections/{}/records/{}/external-auths",
+                self.collection, config.id
             )
-            .map_err(|e| RPocketError::UrlError(e))?;
+            .as_str(),
+        )?;
 
         let request_builder = self
             .client
@@ -519,10 +490,7 @@ where
 
         let response = self.client.http().send(request_builder).await?;
 
-        return response
-            .json::<Vec<T>>()
-            .await
-            .map_err(|e| RPocketError::RequestError(e));
+        return Ok(response.json::<Vec<T>>().await?);
     }
 
     /// unlink a single external auth provider from the specified auth record.
@@ -530,17 +498,13 @@ where
         &mut self,
         config: &RecordUnlinkExternalAuthConfig,
     ) -> Result<(), RPocketError> {
-        let url = self
-            .client
-            .base_url()
-            .join(
-                format!(
-                    "api/collections/{}/records/{}/external-auths/{}",
-                    self.collection, config.id, config.provider
-                )
-                .as_str(),
+        let url = self.client.base_url().join(
+            format!(
+                "api/collections/{}/records/{}/external-auths/{}",
+                self.collection, config.id, config.provider
             )
-            .map_err(|e| RPocketError::UrlError(e))?;
+            .as_str(),
+        )?;
 
         let request_builder = self
             .client

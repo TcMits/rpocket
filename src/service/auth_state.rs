@@ -37,10 +37,7 @@ where
         return self
             .client
             .storage()
-            .set(
-                self.user_or_admin_key,
-                &serde_json::to_string(record).map_err(|e| RPocketError::SerdeError(e))?,
-            )
+            .set(self.user_or_admin_key, &serde_json::to_string(record)?)
             .await;
     }
 
@@ -55,8 +52,7 @@ where
         let data = storage.get(self.user_or_admin_key).await?;
         return match data {
             Some(data) => {
-                let record: AuthPayload =
-                    serde_json::from_str(&data).map_err(|e| RPocketError::SerdeError(e))?;
+                let record: AuthPayload = serde_json::from_str(&data)?;
                 return Ok(Some(record));
             }
             None => Ok(None),

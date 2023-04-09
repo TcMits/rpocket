@@ -262,20 +262,13 @@ impl tower_service::Service<PocketBaseRequest> for PocketBaseService {
         };
 
         return Box::pin(async move {
-            let request = req
-                .request_builder
-                .build()
-                .map_err(|e| RPocketError::RequestError(e))?;
+            let request = req.request_builder.build()?;
 
-            let response = this
-                .inner
-                .http_client
-                .execute(request)
-                .await
-                .map_err(|e| RPocketError::RequestError(e));
+            let response = this.inner.http_client.execute(request).await?;
 
-            return response
-                .map(|response| PocketBaseResponse::HTTP(PocketBaseHTTPResponse { response }));
+            return Ok(PocketBaseResponse::HTTP(PocketBaseHTTPResponse {
+                response,
+            }));
         });
     }
 }

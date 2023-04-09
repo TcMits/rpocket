@@ -46,8 +46,7 @@ where
         let url = self
             .client
             .base_url()
-            .join(format!("{}/import", self.collection_base_path).as_str())
-            .map_err(|e| RPocketError::UrlError(e))?;
+            .join(format!("{}/import", self.collection_base_path).as_str())?;
 
         let request_builder = self
             .client

@@ -46,8 +46,7 @@ where
         let url = self
             .client
             .base_url()
-            .join(format!("{}/stats", self.request_base_path).as_str())
-            .map_err(|e| RPocketError::UrlError(e))?;
+            .join(format!("{}/stats", self.request_base_path).as_str())?;
 
         let request_builder = self
             .client
@@ -57,10 +56,7 @@ where
 
         let response = self.client.http().send(request_builder).await?;
 
-        return Ok(response
-            .json::<Vec<T>>()
-            .await
-            .map_err(|e| RPocketError::RequestError(e))?);
+        return Ok(response.json::<Vec<T>>().await?);
     }
 }
 

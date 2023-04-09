@@ -42,12 +42,7 @@ where
         match pb_response {
             PocketBaseResponse::HTTP(PocketBaseHTTPResponse { response }) => {
                 if !response.status().is_success() {
-                    return Err(RPocketError::APIError(
-                        response
-                            .json::<APIError>()
-                            .await
-                            .map_err(|e| RPocketError::RequestError(e))?,
-                    ));
+                    return Err(RPocketError::APIError(response.json::<APIError>().await?));
                 }
                 return Ok(response);
             }

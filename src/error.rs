@@ -1,5 +1,12 @@
 use serde::{Deserialize, Serialize};
 
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
+pub struct APIError {
+    pub code: i64,
+    pub message: String,
+    pub data: serde_json::Value,
+}
+
 #[derive(Debug)]
 pub enum RPocketError {
     MutexError,
@@ -7,11 +14,61 @@ pub enum RPocketError {
     RequestError(reqwest::Error),
     UrlError(url::ParseError),
     APIError(APIError),
+    Error(Box<dyn std::error::Error + Send + Sync>),
 }
 
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
-pub struct APIError {
-    pub code: i64,
-    pub message: String,
-    pub data: serde_json::Value,
+impl From<serde_json::Error> for RPocketError {
+    fn from(error: serde_json::Error) -> Self {
+        RPocketError::SerdeError(error)
+    }
+}
+
+impl From<reqwest::Error> for RPocketError {
+    fn from(error: reqwest::Error) -> Self {
+        RPocketError::RequestError(error)
+    }
+}
+
+impl From<url::ParseError> for RPocketError {
+    fn from(error: url::ParseError) -> Self {
+        RPocketError::UrlError(error)
+    }
+}
+
+impl From<APIError> for RPocketError {
+    fn from(error: APIError) -> Self {
+        RPocketError::APIError(error)
+    }
+}
+
+impl From<Box<dyn std::error::Error + Send + Sync>> for RPocketError {
+    fn from(error: Box<dyn std::error::Error + Send + Sync>) -> Self {
+        RPocketError::Error(error)
+    }
+}
+
+impl std::fmt::Display for RPocketError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            RPocketError::MutexError => write!(f, "Mutex error"),
+            RPocketError::SerdeError(error) => write!(f, "Serde error: {}", error),
+            RPocketError::RequestError(error) => write!(f, "Request error: {}", error),
+            RPocketError::UrlError(error) => write!(f, "Url error: {}", error),
+            RPocketError::APIError(error) => write!(f, "API error: {}", error.message),
+            RPocketError::Error(error) => write!(f, "Error: {}", error),
+        }
+    }
+}
+
+impl std::error::Error for RPocketError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            RPocketError::MutexError => None,
+            RPocketError::SerdeError(error) => Some(error),
+            RPocketError::RequestError(error) => Some(error),
+            RPocketError::UrlError(error) => Some(error),
+            RPocketError::APIError(..) => None,
+            RPocketError::Error(error) => Some(error.as_ref()),
+        }
+    }
 }

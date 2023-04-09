@@ -31,11 +31,7 @@ where
     where
         T: serde::de::DeserializeOwned,
     {
-        let url = self
-            .client
-            .base_url()
-            .join("api/health")
-            .map_err(|e| RPocketError::UrlError(e))?;
+        let url = self.client.base_url().join("api/health")?;
 
         let request_builder = self
             .client
@@ -45,10 +41,7 @@ where
 
         let response = self.client.http().send(request_builder).await?;
 
-        return Ok(response
-            .json::<T>()
-            .await
-            .map_err(|e| RPocketError::RequestError(e))?);
+        return Ok(response.json::<T>().await?);
     }
 }
 

@@ -68,11 +68,7 @@ where
     where
         T: serde::de::DeserializeOwned,
     {
-        let url = self
-            .client
-            .base_url()
-            .join(&self.base_path)
-            .map_err(|e| RPocketError::UrlError(e))?;
+        let url = self.client.base_url().join(&self.base_path)?;
         let mut queries: Vec<(&str, &str)> = Vec::with_capacity(2 + config.query_params.len());
         let per_page = &config.per_page.to_string();
         let page = &config.page.to_string();
@@ -92,10 +88,7 @@ where
 
         let response = self.client.http().send(request_builder).await?;
 
-        return Ok(response
-            .json::<ListResult<T>>()
-            .await
-            .map_err(|e| RPocketError::RequestError(e))?);
+        return Ok(response.json::<ListResult<T>>().await?);
     }
 
     /// get a record.
@@ -106,8 +99,7 @@ where
         let url = self
             .client
             .base_url()
-            .join(format!("{}/{}", self.base_path, config.id).as_str())
-            .map_err(|e| RPocketError::UrlError(e))?;
+            .join(format!("{}/{}", self.base_path, config.id).as_str())?;
 
         let request_builder = self
             .client
@@ -117,10 +109,7 @@ where
 
         let response = self.client.http().send(request_builder).await?;
 
-        return Ok(response
-            .json::<T>()
-            .await
-            .map_err(|e| RPocketError::RequestError(e))?);
+        return Ok(response.json::<T>().await?);
     }
 
     /// mutate a record
@@ -132,19 +121,14 @@ where
         B: Serialize,
     {
         let mut method = reqwest::Method::POST;
-        let mut url = self
-            .client
-            .base_url()
-            .join(&self.base_path)
-            .map_err(|e| RPocketError::UrlError(e))?;
+        let mut url = self.client.base_url().join(&self.base_path)?;
 
         if let Some(ref id) = config.id {
             method = reqwest::Method::PATCH;
             url = self
                 .client
                 .base_url()
-                .join(format!("{}/{}", self.base_path, id).as_str())
-                .map_err(|e| RPocketError::UrlError(e))?;
+                .join(format!("{}/{}", self.base_path, id).as_str())?;
         }
 
         let request_builder = self
@@ -155,10 +139,7 @@ where
 
         let response = self.client.http().send(request_builder).await?;
 
-        return Ok(response
-            .json::<T>()
-            .await
-            .map_err(|e| RPocketError::RequestError(e))?);
+        return Ok(response.json::<T>().await?);
     }
 
     /// multipart mutate a record
@@ -173,19 +154,14 @@ where
         T: serde::de::DeserializeOwned,
     {
         let mut method = reqwest::Method::POST;
-        let mut url = self
-            .client
-            .base_url()
-            .join(&self.base_path)
-            .map_err(|e| RPocketError::UrlError(e))?;
+        let mut url = self.client.base_url().join(&self.base_path)?;
 
         if let Some(ref id) = config.id {
             method = reqwest::Method::PATCH;
             url = self
                 .client
                 .base_url()
-                .join(format!("{}/{}", self.base_path, id).as_str())
-                .map_err(|e| RPocketError::UrlError(e))?;
+                .join(format!("{}/{}", self.base_path, id).as_str())?;
         }
 
         let request_builder = self
@@ -196,10 +172,7 @@ where
 
         let response = self.client.http().send(request_builder).await?;
 
-        return Ok(response
-            .json::<T>()
-            .await
-            .map_err(|e| RPocketError::RequestError(e))?);
+        return Ok(response.json::<T>().await?);
     }
 
     /// delete a record
@@ -207,8 +180,7 @@ where
         let url = self
             .client
             .base_url()
-            .join(format!("{}/{}", self.base_path, config.id).as_str())
-            .map_err(|e| RPocketError::UrlError(e))?;
+            .join(format!("{}/{}", self.base_path, config.id).as_str())?;
 
         let request_builder = self
             .client
