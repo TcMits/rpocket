@@ -425,13 +425,11 @@ mod test {
             &mut self,
             cx: &mut std::task::Context<'_>,
         ) -> std::task::Poll<Result<(), Self::Error>> {
-            return self.inner.poll_ready(cx);
+            self.inner.poll_ready(cx)
         }
 
         fn call(&mut self, req: PocketBaseRequest) -> Self::Future {
-            let mut req = match req {
-                PocketBaseRequest::HTTP(req) => req,
-            };
+            let PocketBaseRequest::HTTP(mut req) = req;
 
             req.request_builder = req.request_builder.header("X-Test", "test");
             self.inner.call(PocketBaseRequest::HTTP(req))
@@ -456,7 +454,7 @@ mod test {
             .lang("en")
             .layer(tower::layer::layer_fn(|s| {
                 let service = TestService { inner: s };
-                return service;
+                service
             }))
             .build();
 

@@ -606,8 +606,8 @@ mod test {
         mock.assert_async().await;
         let response = response.unwrap();
 
-        assert!(response.username_password == false);
-        assert!(response.email_password == true);
+        assert!(!response.username_password);
+        assert!(response.email_password);
         assert!(response.auth_providers.len() == 3);
         assert!(response.auth_providers[0].name == "github");
         assert!(response.auth_providers[0].state == "3Yd8jNkK_6PJG6hPWwBjLqKwse6Ejd");

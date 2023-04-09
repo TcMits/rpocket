@@ -159,7 +159,7 @@ where
         T: serde::de::DeserializeOwned,
     {
         let mut method = reqwest::Method::POST;
-        let mut url = self.client.base_url().join(&self.base_path)?;
+        let mut url = self.client.base_url().join(self.base_path)?;
 
         if let Some(ref id) = config.id {
             method = reqwest::Method::PATCH;

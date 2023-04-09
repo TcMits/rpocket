@@ -550,6 +550,6 @@ mod tests {
         mock.assert_async().await;
         let response = response.unwrap();
 
-        assert!(response.secret == "test".to_string());
+        assert!(response.secret == *"test");
     }
 }
