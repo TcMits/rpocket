@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 pub const DEFAULT_PER_PAGE: i64 = 30;
 pub const DEFAULT_PAGE: i64 = 1;
 
+/// CRUDGetListConfig is the config for the get list method.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CRUDGetListConfig {
     pub per_page: i64,
@@ -24,12 +25,14 @@ impl Default for CRUDGetListConfig {
     }
 }
 
+/// CRUDGetOneConfig is the config for the get one method.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct CRUDGetOneConfig {
     pub id: String,
     pub query_params: Vec<(String, String)>,
 }
 
+/// CRUDMutateConfig is the config for the mutate method.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct CRUDMutateConfig<T> {
     #[serde(skip)]
@@ -40,12 +43,14 @@ pub struct CRUDMutateConfig<T> {
     pub query_params: Vec<(String, String)>,
 }
 
+/// CRUDDeleteConfig is the config for the delete method.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct CRUDDeleteConfig {
     pub id: String,
     pub query_params: Vec<(String, String)>,
 }
 
+/// CRUDService is the service for CRUD operations.
 pub struct CRUDService<'a, C> {
     client: &'a mut C,
     base_path: &'a str,

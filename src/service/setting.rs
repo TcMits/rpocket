@@ -2,16 +2,19 @@ use serde::{Deserialize, Serialize};
 
 use crate::error::RPocketError;
 
+/// SettingGenerateAppleClientSecretResponse is the response for the generate apple client secret.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct SettingGenerateAppleClientSecretResponse {
     pub secret: String,
 }
 
+/// SettingGetAllConfig is the config for the get all.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct SettingGetAllConfig {
     pub query_params: Vec<(String, String)>,
 }
 
+/// SettingUpdateConfig is the config for the update.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct SettingUpdateConfig<T> {
     #[serde(flatten)]
@@ -20,6 +23,7 @@ pub struct SettingUpdateConfig<T> {
     pub query_params: Vec<(String, String)>,
 }
 
+/// SettingTestS3Config is the config for the test s3.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct SettingTestS3Config<T> {
     #[serde(flatten)]
@@ -28,6 +32,7 @@ pub struct SettingTestS3Config<T> {
     pub query_params: Vec<(String, String)>,
 }
 
+/// SettingTestEmailConfig is the config for the test email.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct SettingTestEmailConfig<T> {
     pub email: String,
@@ -38,6 +43,7 @@ pub struct SettingTestEmailConfig<T> {
     pub query_params: Vec<(String, String)>,
 }
 
+/// SettingGenerateAppleClientSecretConfig is the config for the generate apple client secret.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct SettingGenerateAppleClientSecretConfig<T> {
     #[serde(rename = "clientId")]
@@ -55,6 +61,7 @@ pub struct SettingGenerateAppleClientSecretConfig<T> {
     pub query_params: Vec<(String, String)>,
 }
 
+/// SettingService is the service for setting.
 pub struct SettingService<'a, C> {
     client: &'a mut C,
 }

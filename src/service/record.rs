@@ -5,6 +5,7 @@ use crate::model::Record;
 use crate::service;
 use serde::{Deserialize, Serialize};
 
+/// RecordAuthResponse is the response for the auth.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RecordAuthResponse<T> {
@@ -13,6 +14,7 @@ pub struct RecordAuthResponse<T> {
     pub meta: Option<HashMap<String, serde_json::Value>>,
 }
 
+/// AuthProvicderInfo is the info for an auth provider.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AuthProvicderInfo {
@@ -24,6 +26,7 @@ pub struct AuthProvicderInfo {
     pub auth_url: String,
 }
 
+/// ListAuthMethod is the model for a list auth method.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ListAuthMethod {
@@ -32,11 +35,13 @@ pub struct ListAuthMethod {
     pub auth_providers: Vec<AuthProvicderInfo>,
 }
 
+/// RecordListAuthMethodsResponse is the response for the list auth methods.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct RecordListAuthMethodsConfig {
     pub query_params: Vec<(String, String)>,
 }
 
+/// RecordAuthWithPasswordConfig is the config for the auth with password.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct RecordAuthWithPasswordConfig<T> {
     pub identity: String,
@@ -49,6 +54,7 @@ pub struct RecordAuthWithPasswordConfig<T> {
     pub without_saving: bool,
 }
 
+/// RecordAuthWithOAuth2Config is the config for the auth with OAuth2.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct RecordAuthWithOAuth2Config<T> {
     pub provider: String,
@@ -65,6 +71,7 @@ pub struct RecordAuthWithOAuth2Config<T> {
     pub without_saving: bool,
 }
 
+/// RecordAuthRefreshConfig is the config for the auth refresh.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct RecordAuthRefreshConfig<T> {
     #[serde(flatten)]
@@ -75,6 +82,7 @@ pub struct RecordAuthRefreshConfig<T> {
     pub without_saving: bool,
 }
 
+/// RecordRequestPasswordResetConfig is the config for the request password reset.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct RecordRequestPasswordResetConfig<T> {
     pub email: String,
@@ -84,6 +92,7 @@ pub struct RecordRequestPasswordResetConfig<T> {
     pub query_params: Vec<(String, String)>,
 }
 
+/// RecordConfirmPasswordResetConfig is the config for the confirm password reset.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct RecordConfirmPasswordResetConfig<T> {
     pub token: String,
@@ -96,6 +105,7 @@ pub struct RecordConfirmPasswordResetConfig<T> {
     pub query_params: Vec<(String, String)>,
 }
 
+/// RecordRequestVerificationConfig is the config for the request verification.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct RecordRequestVerificationConfig<T> {
     pub email: String,
@@ -105,6 +115,7 @@ pub struct RecordRequestVerificationConfig<T> {
     pub query_params: Vec<(String, String)>,
 }
 
+/// RecordConfirmVerificationConfig is the config for the confirm verification.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct RecordConfirmVerificationConfig<T> {
     pub token: String,
@@ -114,6 +125,7 @@ pub struct RecordConfirmVerificationConfig<T> {
     pub query_params: Vec<(String, String)>,
 }
 
+/// RecordRequestEmailChangeConfig is the config for the request email change.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct RecordRequestEmailChangeConfig<T> {
     #[serde(rename = "newEmail")]
@@ -124,6 +136,7 @@ pub struct RecordRequestEmailChangeConfig<T> {
     pub query_params: Vec<(String, String)>,
 }
 
+/// RecordConfirmEmailChangeConfig is the config for the confirm email change.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct RecordConfirmEmailChangeConfig<T> {
     pub token: String,
@@ -134,12 +147,14 @@ pub struct RecordConfirmEmailChangeConfig<T> {
     pub query_params: Vec<(String, String)>,
 }
 
+/// RecordListExternalAuthsConfig is the config for the list external auths.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct RecordListExternalAuthsConfig {
     pub id: String,
     pub query_params: Vec<(String, String)>,
 }
 
+/// RecordUnlinkExternalAuthConfig is the config for the unlink external auth.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct RecordUnlinkExternalAuthConfig {
     pub id: String,
@@ -147,6 +162,7 @@ pub struct RecordUnlinkExternalAuthConfig {
     pub query_params: Vec<(String, String)>,
 }
 
+/// RecordService is the service for the record.
 pub struct RecordService<'a, C> {
     client: &'a mut C,
     collection: &'a str,

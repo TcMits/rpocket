@@ -8,6 +8,7 @@ pub fn get_default_collection_type() -> String {
     return DEFAULT_COLLECTION_TYPE.to_string();
 }
 
+/// BaseModel is the base model for all models.
 #[derive(Debug, PartialEq, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct BaseModel {
@@ -16,6 +17,7 @@ pub struct BaseModel {
     pub updated: String,
 }
 
+/// ExpandValue is the value for the expand field.
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum ExpandValue {
@@ -23,6 +25,7 @@ pub enum ExpandValue {
     ListRecords(Vec<Record>),
 }
 
+/// Record is the model for a record.
 #[derive(Debug, PartialEq, Default, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Record {
@@ -35,6 +38,7 @@ pub struct Record {
     pub expand: Option<HashMap<String, ExpandValue>>,
 }
 
+/// Admin is the model for an admin.
 #[derive(Debug, PartialEq, Default, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Admin {
@@ -44,6 +48,7 @@ pub struct Admin {
     pub email: String,
 }
 
+/// ListResult is the model for a list result.
 #[derive(Debug, PartialEq, Default, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ListResult<T> {
@@ -53,6 +58,7 @@ pub struct ListResult<T> {
     pub items: Vec<T>,
 }
 
+/// ExternalAuth is the model for an external auth.
 #[derive(Debug, PartialEq, Default, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ExternalAuth {
@@ -64,6 +70,7 @@ pub struct ExternalAuth {
     pub provider_id: String,
 }
 
+/// SchemaField is the model for a schema field.
 #[derive(Debug, PartialEq, Default, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SchemaField {
@@ -76,6 +83,7 @@ pub struct SchemaField {
     pub options: HashMap<String, serde_json::Value>,
 }
 
+/// Collection is the model for a collection.
 #[derive(Debug, PartialEq, Default, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Collection {
@@ -95,6 +103,7 @@ pub struct Collection {
     pub options: HashMap<String, serde_json::Value>,
 }
 
+/// LogRequest is the model for a log request.
 #[derive(Debug, PartialEq, Default, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LogRequest {

@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{error::RPocketError, model::Collection, service};
 
+/// CollectionImportConfig is the config for importing collections.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct CollectionImportConfig<T> {
     pub collections: Vec<Collection>,
@@ -13,6 +14,7 @@ pub struct CollectionImportConfig<T> {
     pub query_params: Vec<(String, String)>,
 }
 
+/// CollectionService is the service for collections.
 pub struct CollectionService<'a, C> {
     client: &'a mut C,
     collection_base_path: String,

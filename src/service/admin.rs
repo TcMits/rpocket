@@ -4,6 +4,7 @@ use std::collections::HashMap;
 
 use crate::{error::RPocketError, model::Admin, service::auth_state::AuthPayload};
 
+/// AdminAuthResponse is the response for the admin auth.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AdminAuthResponse {
@@ -14,6 +15,7 @@ pub struct AdminAuthResponse {
     pub extra: HashMap<String, serde_json::Value>,
 }
 
+/// AdminAuthWithPasswordConfig is the config for the admin auth with password.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct AdminAuthWithPasswordConfig<T> {
     pub identity: String,
@@ -26,6 +28,7 @@ pub struct AdminAuthWithPasswordConfig<T> {
     pub without_saving: bool,
 }
 
+/// AdminAuthRefreshConfig is the config for the admin auth refresh.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct AdminAuthRefreshConfig<T> {
     #[serde(flatten)]
@@ -36,6 +39,7 @@ pub struct AdminAuthRefreshConfig<T> {
     pub without_saving: bool,
 }
 
+/// AdminRequestPasswordResetConfig is the config for the admin request password reset.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct AdminRequestPasswordResetConfig<T> {
     pub email: String,
@@ -45,6 +49,7 @@ pub struct AdminRequestPasswordResetConfig<T> {
     pub query_params: Vec<(String, String)>,
 }
 
+/// AdminConfirmPasswordResetConfig is the config for the admin confirm password reset.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct AdminConfirmPasswordResetConfig<T> {
     pub token: String,
@@ -57,6 +62,7 @@ pub struct AdminConfirmPasswordResetConfig<T> {
     pub query_params: Vec<(String, String)>,
 }
 
+/// AdminService is the service for the admin.
 pub struct AdminService<'a, C> {
     client: &'a mut C,
     admin_base_path: String,

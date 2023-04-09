@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use crate::error::RPocketError;
 use crate::{model::Admin, model::Record};
 
+/// AuthPayload is the payload for the auth state.
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum AuthPayload {
@@ -10,6 +11,7 @@ pub enum AuthPayload {
     Admin(Admin),
 }
 
+/// AuthStateService is the service for the auth state.
 pub struct AuthStateService<'a, C> {
     client: &'a mut C,
     token_key: &'a str,

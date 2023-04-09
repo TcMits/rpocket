@@ -9,9 +9,16 @@ pub const USER_OR_ADMIN_KEY: &str = "pb_user_or_admin";
 
 #[async_trait]
 pub trait PocketBaseClient {
+    /// returns the default language.
     fn lang(&self) -> &str;
+
+    /// returns the base url.
     fn base_url(&self) -> &url::Url;
+
+    /// returns the request builder.
     fn request_builder(&self, method: reqwest::Method, url: &str) -> reqwest::RequestBuilder;
+
+    /// returns the storage.
     fn storage(&self) -> Arc<dyn store::Storage + Sync + Send>;
 
     /// execute a request.
@@ -99,7 +106,6 @@ pub struct PocketBaseHTTPRequest {
 }
 
 /// PocketBaseRequest is the request for PocketBase.
-/// now it only supports HTTP request.
 #[derive(Debug)]
 pub enum PocketBaseRequest {
     HTTP(PocketBaseHTTPRequest),
@@ -112,12 +118,13 @@ pub struct PocketBaseHTTPResponse {
 }
 
 /// PocketBaseResponse is the response for PocketBase.
-/// now it only supports HTTP response.
 #[derive(Debug)]
 pub enum PocketBaseResponse {
     HTTP(PocketBaseHTTPResponse),
 }
 
+/// PocketBaseBuilder is the builder for PocketBase.
+/// it is used to create a PocketBase struct.
 pub struct PocketBaseBuilder<L> {
     lang: &'static str,
     token_key: &'static str,
@@ -129,7 +136,7 @@ pub struct PocketBaseBuilder<L> {
 }
 
 impl PocketBaseBuilder<Identity> {
-    /// Create a new PocketBaseBuilder.
+    /// create a new PocketBaseBuilder.
     pub fn new() -> Self {
         return PocketBaseBuilder {
             lang: "en",
@@ -284,7 +291,7 @@ pub struct PocketBase<S> {
 }
 
 impl PocketBase<PocketBaseService> {
-    /// Create a new PocketBase.
+    /// create a new PocketBase.
     pub fn new(base_url: &str, lang: &'static str) -> Self {
         return PocketBaseBuilder::new()
             .base_url(base_url)

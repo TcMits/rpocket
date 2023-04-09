@@ -2,17 +2,20 @@ use serde::{Deserialize, Serialize};
 
 use crate::error::RPocketError;
 
+/// HealthCheckResponse is the response for the health check.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct HealthCheckResponse {
     pub status: i64,
     pub message: String,
 }
 
+/// HealthCheckConfig is the config for the health check.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct HealthCheckConfig {
     pub query_params: Vec<(String, String)>,
 }
 
+/// HealthService is the service for health.
 pub struct HealthService<'a, C> {
     client: &'a mut C,
 }

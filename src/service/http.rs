@@ -4,6 +4,7 @@ use crate::rpocket::{
     PocketBaseHTTPRequest, PocketBaseHTTPResponse, PocketBaseRequest, PocketBaseResponse,
 };
 
+/// HTTPRequest is the request for the HTTP service.
 pub struct HTTPService<'a, C> {
     client: &'a mut C,
 }

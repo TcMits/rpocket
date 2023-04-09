@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 
+/// error struct returned by the Pocket API.
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct APIError {
     pub code: i64,
@@ -7,6 +8,7 @@ pub struct APIError {
     pub data: serde_json::Value,
 }
 
+/// error type for the RPocket library.
 #[derive(Debug)]
 pub enum RPocketError {
     MutexError,

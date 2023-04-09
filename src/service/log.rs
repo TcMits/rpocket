@@ -2,17 +2,20 @@ use serde::{Deserialize, Serialize};
 
 use crate::{error::RPocketError, service};
 
+/// LogGetRequestsStatsResponse is the response for the get requests stats.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct LogGetRequestsStatsResponse {
     pub total: i64,
     pub date: String,
 }
 
+/// LogGetRequestsStatsConfig is the config for the get requests stats.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct LogGetRequestsStatsConfig {
     pub query_params: Vec<(String, String)>,
 }
 
+/// LogService is the service for logs.
 pub struct LogService<'a, C> {
     client: &'a mut C,
     request_base_path: String,
