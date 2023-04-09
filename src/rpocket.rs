@@ -30,16 +30,16 @@ pub trait PocketBaseClient {
         Self: Sized;
 
     /// returns auth state service.
-    fn auth_state<'a>(&'a mut self) -> service::auth_state::AuthStateService<'a, Self>
+    fn auth_state(&mut self) -> service::auth_state::AuthStateService<Self>
     where
         Self: Sized;
 
     /// returns http service.
-    fn http<'a>(&'a mut self) -> service::http::HTTPService<'a, Self>
+    fn http(&mut self) -> service::http::HTTPService<Self>
     where
         Self: Sized,
     {
-        return service::http::HTTPService::new(self);
+        service::http::HTTPService::new(self)
     }
 
     /// returns crud service.
@@ -47,7 +47,7 @@ pub trait PocketBaseClient {
     where
         Self: Sized,
     {
-        return service::crud::CRUDService::new(self, base_path);
+        service::crud::CRUDService::new(self, base_path)
     }
 
     /// returns record service.
@@ -55,47 +55,47 @@ pub trait PocketBaseClient {
     where
         Self: Sized,
     {
-        return service::record::RecordService::new(self, name);
+        service::record::RecordService::new(self, name)
     }
 
     /// returns admin service.
-    fn admin<'a>(&'a mut self) -> service::admin::AdminService<'a, Self>
+    fn admin(&mut self) -> service::admin::AdminService<Self>
     where
         Self: Sized,
     {
-        return service::admin::AdminService::new(self);
+        service::admin::AdminService::new(self)
     }
 
     /// returns collection service.
-    fn collection<'a>(&'a mut self) -> service::collection::CollectionService<'a, Self>
+    fn collection(&mut self) -> service::collection::CollectionService<Self>
     where
         Self: Sized,
     {
-        return service::collection::CollectionService::new(self);
+        service::collection::CollectionService::new(self)
     }
 
     /// returns log service.
-    fn log<'a>(&'a mut self) -> service::log::LogService<'a, Self>
+    fn log(&mut self) -> service::log::LogService<Self>
     where
         Self: Sized,
     {
-        return service::log::LogService::new(self);
+        service::log::LogService::new(self)
     }
 
     /// returns setting service.
-    fn setting<'a>(&'a mut self) -> service::setting::SettingService<'a, Self>
+    fn setting(&mut self) -> service::setting::SettingService<Self>
     where
         Self: Sized,
     {
-        return service::setting::SettingService::new(self);
+        service::setting::SettingService::new(self)
     }
 
     /// retuns health service.
-    fn health<'a>(&'a mut self) -> service::health::HealthService<'a, Self>
+    fn health(&mut self) -> service::health::HealthService<Self>
     where
         Self: Sized,
     {
-        return service::health::HealthService::new(self);
+        service::health::HealthService::new(self)
     }
 }
 
@@ -138,15 +138,21 @@ pub struct PocketBaseBuilder<L> {
 impl PocketBaseBuilder<Identity> {
     /// create a new PocketBaseBuilder.
     pub fn new() -> Self {
-        return PocketBaseBuilder {
+        PocketBaseBuilder {
             lang: "en",
             token_key: TOKEN_KEY,
             user_or_admin_key: USER_OR_ADMIN_KEY,
-            base_url: url::Url::parse("https://api.pocketbase.io").unwrap(),
+            base_url: url::Url::parse("https://pocketbase.io").unwrap(),
             storage: Arc::new(store::MemoryStorage::new()),
             http_client: reqwest::Client::new(),
             layer: Identity::new(),
-        };
+        }
+    }
+}
+
+impl Default for PocketBaseBuilder<Identity> {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -154,42 +160,42 @@ impl<L> PocketBaseBuilder<L> {
     /// set the language.
     pub fn lang(mut self, lang: &'static str) -> Self {
         self.lang = lang;
-        return self;
+        self
     }
 
     /// set the base URL.
     pub fn base_url(mut self, base_url: &str) -> Self {
         self.base_url = url::Url::parse(base_url).unwrap();
-        return self;
+        self
     }
 
     /// set token key
     pub fn token_key(mut self, token_key: &'static str) -> Self {
         self.token_key = token_key;
-        return self;
+        self
     }
 
     /// set user or admin key
     pub fn user_or_admin_key(mut self, user_or_admin_key: &'static str) -> Self {
         self.user_or_admin_key = user_or_admin_key;
-        return self;
+        self
     }
 
     /// set the storage.
     pub fn storage(mut self, storage: Arc<dyn store::Storage + Send + Sync>) -> Self {
         self.storage = storage;
-        return self;
+        self
     }
 
     /// set the http client.
     pub fn http_client(mut self, http_client: reqwest::Client) -> Self {
         self.http_client = http_client;
-        return self;
+        self
     }
 
     /// add middlewares.
     pub fn layer<T>(self, layer: T) -> PocketBaseBuilder<tower::layer::util::Stack<T, L>> {
-        return PocketBaseBuilder {
+        PocketBaseBuilder {
             lang: self.lang,
             token_key: self.token_key,
             user_or_admin_key: self.user_or_admin_key,
@@ -197,7 +203,7 @@ impl<L> PocketBaseBuilder<L> {
             storage: self.storage,
             layer: tower::layer::util::Stack::new(layer, self.layer),
             http_client: self.http_client,
-        };
+        }
     }
 
     /// build the PocketBase.
@@ -228,7 +234,7 @@ impl<L> PocketBaseBuilder<L> {
 
         let client = self.layer.layer(client);
 
-        return PocketBase { inner, client };
+        PocketBase { inner, client }
     }
 }
 
@@ -259,24 +265,22 @@ impl tower_service::Service<PocketBaseRequest> for PocketBaseService {
         &mut self,
         _cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Result<(), Self::Error>> {
-        return std::task::Poll::Ready(Ok(())); // TODO: check if the client is ready (healthcheck).
+        std::task::Poll::Ready(Ok(())) // TODO: check if the client is ready (healthcheck).
     }
 
     fn call(&mut self, request: PocketBaseRequest) -> Self::Future {
         let this = self.clone();
-        let req = match request {
-            PocketBaseRequest::HTTP(req) => req,
-        };
+        let PocketBaseRequest::HTTP(req) = request;
 
-        return Box::pin(async move {
+        Box::pin(async move {
             let request = req.request_builder.build()?;
 
             let response = this.inner.http_client.execute(request).await?;
 
-            return Ok(PocketBaseResponse::HTTP(PocketBaseHTTPResponse {
+            Ok(PocketBaseResponse::HTTP(PocketBaseHTTPResponse {
                 response,
-            }));
-        });
+            }))
+        })
     }
 }
 
@@ -293,10 +297,10 @@ pub struct PocketBase<S> {
 impl PocketBase<PocketBaseService> {
     /// create a new PocketBase.
     pub fn new(base_url: &str, lang: &'static str) -> Self {
-        return PocketBaseBuilder::new()
+        PocketBaseBuilder::new()
             .base_url(base_url)
             .lang(lang)
-            .build();
+            .build()
     }
 }
 
@@ -313,30 +317,30 @@ where
 {
     /// get the base URL.
     fn base_url(&self) -> &url::Url {
-        return &self.inner.base_url;
+        &self.inner.base_url
     }
 
     /// get the language.
     fn lang(&self) -> &str {
-        return self.inner.lang;
+        self.inner.lang
     }
 
     /// get the storage.
     fn storage(&self) -> Arc<dyn store::Storage + Sync + Send> {
-        return self.inner.storage.clone();
+        self.inner.storage.clone()
     }
 
-    fn auth_state<'a>(&'a mut self) -> service::auth_state::AuthStateService<'a, Self> {
-        return service::auth_state::AuthStateService::new(
+    fn auth_state(&mut self) -> service::auth_state::AuthStateService<Self> {
+        service::auth_state::AuthStateService::new(
             self,
             self.inner.token_key,
             self.inner.user_or_admin_key,
-        );
+        )
     }
 
     /// get request builder.
     fn request_builder(&self, method: reqwest::Method, url: &str) -> reqwest::RequestBuilder {
-        return self.inner.http_client.request(method, url);
+        self.inner.http_client.request(method, url)
     }
 
     /// execute a request.
@@ -344,10 +348,10 @@ where
         &mut self,
         request: PocketBaseRequest,
     ) -> Result<PocketBaseResponse, RPocketError> {
-        return tower::util::Ready::new(&mut self.client)
+        tower::util::Ready::new(&mut self.client)
             .await?
             .call(request)
-            .await;
+            .await
     }
 }
 

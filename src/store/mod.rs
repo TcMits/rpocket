@@ -16,9 +16,15 @@ pub struct MemoryStorage {
 impl MemoryStorage {
     /// create a new MemoryStorage.
     pub fn new() -> Self {
-        return MemoryStorage {
+        MemoryStorage {
             data: std::sync::RwLock::new(std::collections::HashMap::new()),
-        };
+        }
+    }
+}
+
+impl Default for MemoryStorage {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -63,13 +69,10 @@ impl Storage for MemoryStorage {
         let data = self.data.read().map_err(|_| RPocketError::MutexError)?;
         let inner_entry = data.get(key);
 
-        match inner_entry {
-            Some(..) => {
-                drop(data);
-                let mut data = self.data.write().map_err(|_| RPocketError::MutexError)?;
-                data.remove(key);
-            }
-            None => {}
+        if let Some(..) = inner_entry {
+            drop(data);
+            let mut data = self.data.write().map_err(|_| RPocketError::MutexError)?;
+            data.remove(key);
         }
 
         return Ok(());

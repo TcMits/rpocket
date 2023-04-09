@@ -27,15 +27,15 @@ where
 {
     /// create a new LogService.
     pub fn new(client: &'a mut C) -> Self {
-        return LogService {
+        LogService {
             client,
             request_base_path: "api/logs/requests".to_string(),
-        };
+        }
     }
 
     /// returns crud service.
     pub fn crud(&'a mut self) -> service::crud::CRUDService<'a, C> {
-        return self.client.crud(&self.request_base_path);
+        self.client.crud(&self.request_base_path)
     }
 
     /// get the requests stats of the server.
@@ -59,7 +59,7 @@ where
 
         let response = self.client.http().send(request_builder).await?;
 
-        return Ok(response.json::<Vec<T>>().await?);
+        Ok(response.json::<Vec<T>>().await?)
     }
 }
 

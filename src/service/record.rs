@@ -175,16 +175,16 @@ where
 {
     /// create a new RecordService.
     pub fn new(client: &'a mut C, collection: &'a str) -> Self {
-        return RecordService {
+        RecordService {
             client,
             collection,
             record_base_path: format!("api/collections/{}/records", collection),
-        };
+        }
     }
 
     /// returns crud service.
     pub fn crud(&'a mut self) -> service::crud::CRUDService<'a, C> {
-        return self.client.crud(&self.record_base_path);
+        self.client.crud(&self.record_base_path)
     }
 
     /// list auth methods
@@ -208,7 +208,7 @@ where
 
         let response = self.client.http().send(request_builder).await?;
 
-        return Ok(response.json::<T>().await?);
+        Ok(response.json::<T>().await?)
     }
 
     async fn save_auth_response<T>(
@@ -241,7 +241,7 @@ where
         let auth_response = serde_json::to_value(&auth_response)?;
         let response = serde_json::from_value(auth_response)?;
 
-        return Ok(response);
+        Ok(response)
     }
 
     /// authenticate with password
@@ -271,7 +271,7 @@ where
             return self.save_auth_response::<T>(response).await;
         }
 
-        return Ok(response.json::<T>().await?);
+        Ok(response.json::<T>().await?)
     }
 
     /// authenticate with oauth2
@@ -301,7 +301,7 @@ where
             return self.save_auth_response::<T>(response).await;
         }
 
-        return Ok(response.json::<T>().await?);
+        Ok(response.json::<T>().await?)
     }
 
     /// refreshes the current authenticated record instance and
@@ -331,7 +331,7 @@ where
             return self.save_auth_response::<T>(response).await;
         }
 
-        return Ok(response.json::<T>().await?);
+        Ok(response.json::<T>().await?)
     }
 
     /// sends auth record password reset request.
@@ -355,7 +355,7 @@ where
             .json(&config);
 
         self.client.http().send(request_builder).await?;
-        return Ok(());
+        Ok(())
     }
 
     /// confirms auth record password reset request.
@@ -379,7 +379,7 @@ where
             .json(&config);
 
         self.client.http().send(request_builder).await?;
-        return Ok(());
+        Ok(())
     }
 
     /// sends auth record verification email request.
@@ -404,7 +404,7 @@ where
 
         self.client.http().send(request_builder).await?;
 
-        return Ok(());
+        Ok(())
     }
 
     /// confirms auth record verification email request.
@@ -429,7 +429,7 @@ where
 
         self.client.http().send(request_builder).await?;
 
-        return Ok(());
+        Ok(())
     }
 
     /// sends an email change request to the authenticated record model.
@@ -454,7 +454,7 @@ where
 
         self.client.http().send(request_builder).await?;
 
-        return Ok(());
+        Ok(())
     }
 
     /// confirms auth record's new email address.
@@ -479,7 +479,7 @@ where
 
         self.client.http().send(request_builder).await?;
 
-        return Ok(());
+        Ok(())
     }
 
     /// lists all linked external auth providers for the specified auth record.
@@ -506,7 +506,7 @@ where
 
         let response = self.client.http().send(request_builder).await?;
 
-        return Ok(response.json::<Vec<T>>().await?);
+        Ok(response.json::<Vec<T>>().await?)
     }
 
     /// unlink a single external auth provider from the specified auth record.
@@ -530,7 +530,7 @@ where
 
         self.client.http().send(request_builder).await?;
 
-        return Ok(());
+        Ok(())
     }
 }
 

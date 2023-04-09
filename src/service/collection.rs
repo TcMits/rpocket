@@ -26,15 +26,15 @@ where
 {
     /// create a new CollectionService.
     pub fn new(client: &'a mut C) -> Self {
-        return CollectionService {
+        CollectionService {
             client,
             collection_base_path: "api/collections".to_string(),
-        };
+        }
     }
 
     /// returns crud service.
     pub fn crud(&'a mut self) -> service::crud::CRUDService<'a, C> {
-        return self.client.crud(&self.collection_base_path);
+        self.client.crud(&self.collection_base_path)
     }
 
     /// imports the provided collections.
@@ -58,7 +58,7 @@ where
             .json(&config);
 
         self.client.http().send(request_builder).await?;
-        return Ok(());
+        Ok(())
     }
 }
 

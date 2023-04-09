@@ -15,7 +15,7 @@ where
 {
     /// create a new HTTPService.
     pub fn new(client: &'a mut C) -> Self {
-        return HTTPService { client };
+        HTTPService { client }
     }
 
     /// send a request.
@@ -28,13 +28,9 @@ where
             self.client.lang(),
         );
 
-        // add auth token
-        match self.client.auth_state().get_token().await? {
-            Some(token) => {
-                request_builder =
-                    request_builder.header(reqwest::header::AUTHORIZATION.as_str(), token)
-            }
-            None => {}
+        if let Some(token) = self.client.auth_state().get_token().await? {
+            request_builder =
+                request_builder.header(reqwest::header::AUTHORIZATION.as_str(), token);
         }
 
         let pb_request = PocketBaseRequest::HTTP(PocketBaseHTTPRequest { request_builder });
@@ -45,9 +41,9 @@ where
                 if !response.status().is_success() {
                     return Err(RPocketError::APIError(response.json::<APIError>().await?));
                 }
-                return Ok(response);
+                Ok(response)
             }
-        };
+        }
     }
 }
 

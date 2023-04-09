@@ -17,11 +17,11 @@ pub struct CRUDGetListConfig {
 impl Default for CRUDGetListConfig {
     /// create a default CRUDGetListConfig.
     fn default() -> Self {
-        return CRUDGetListConfig {
+        CRUDGetListConfig {
             per_page: DEFAULT_PER_PAGE,
             page: DEFAULT_PAGE,
             query_params: Vec::new(),
-        };
+        }
     }
 }
 
@@ -62,7 +62,7 @@ where
 {
     /// create a new CRUDService.
     pub fn new(client: &'a mut C, base_path: &'a str) -> Self {
-        return CRUDService { client, base_path };
+        CRUDService { client, base_path }
     }
 
     /// get a list of records.
@@ -73,7 +73,7 @@ where
     where
         T: serde::de::DeserializeOwned,
     {
-        let url = self.client.base_url().join(&self.base_path)?;
+        let url = self.client.base_url().join(self.base_path)?;
         let mut queries: Vec<(&str, &str)> = Vec::with_capacity(2 + config.query_params.len());
         let per_page = &config.per_page.to_string();
         let page = &config.page.to_string();
@@ -93,7 +93,7 @@ where
 
         let response = self.client.http().send(request_builder).await?;
 
-        return Ok(response.json::<ListResult<T>>().await?);
+        Ok(response.json::<ListResult<T>>().await?)
     }
 
     /// get a record.
@@ -114,7 +114,7 @@ where
 
         let response = self.client.http().send(request_builder).await?;
 
-        return Ok(response.json::<T>().await?);
+        Ok(response.json::<T>().await?)
     }
 
     /// mutate a record
@@ -126,7 +126,7 @@ where
         B: Serialize,
     {
         let mut method = reqwest::Method::POST;
-        let mut url = self.client.base_url().join(&self.base_path)?;
+        let mut url = self.client.base_url().join(self.base_path)?;
 
         if let Some(ref id) = config.id {
             method = reqwest::Method::PATCH;
@@ -144,7 +144,7 @@ where
 
         let response = self.client.http().send(request_builder).await?;
 
-        return Ok(response.json::<T>().await?);
+        Ok(response.json::<T>().await?)
     }
 
     /// multipart mutate a record
@@ -177,7 +177,7 @@ where
 
         let response = self.client.http().send(request_builder).await?;
 
-        return Ok(response.json::<T>().await?);
+        Ok(response.json::<T>().await?)
     }
 
     /// delete a record
@@ -194,7 +194,7 @@ where
             .query(&config.query_params);
 
         self.client.http().send(request_builder).await?;
-        return Ok(());
+        Ok(())
     }
 }
 

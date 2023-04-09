@@ -74,15 +74,15 @@ where
 {
     /// create a new AdminService.
     pub fn new(client: &'a mut C) -> Self {
-        return AdminService {
+        AdminService {
             client,
             admin_base_path: "api/admins".to_string(),
-        };
+        }
     }
 
     /// returns crud service.
     pub fn crud(&'a mut self) -> service::crud::CRUDService<'a, C> {
-        return self.client.crud(&self.admin_base_path);
+        self.client.crud(&self.admin_base_path)
     }
 
     async fn save_auth_response<T>(
@@ -115,7 +115,7 @@ where
         let auth_response = serde_json::to_value(&auth_response)?;
         let response = serde_json::from_value(auth_response)?;
 
-        return Ok(response);
+        Ok(response)
     }
 
     /// authenticate with password
@@ -145,7 +145,7 @@ where
             return self.save_auth_response::<T>(response).await;
         }
 
-        return Ok(response.json::<T>().await?);
+        Ok(response.json::<T>().await?)
     }
 
     /// refreshes the current authenticated admin instance and
@@ -175,7 +175,7 @@ where
             return self.save_auth_response::<T>(response).await;
         }
 
-        return Ok(response.json::<T>().await?);
+        Ok(response.json::<T>().await?)
     }
 
     /// ends auth admin password reset request.
@@ -200,7 +200,7 @@ where
 
         self.client.http().send(request_builder).await?;
 
-        return Ok(());
+        Ok(())
     }
 
     /// confirms auth admin password reset request.
@@ -225,7 +225,7 @@ where
 
         self.client.http().send(request_builder).await?;
 
-        return Ok(());
+        Ok(())
     }
 }
 

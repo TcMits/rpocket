@@ -24,41 +24,40 @@ where
 {
     /// create a new AuthStateService with custom keys.
     pub fn new(client: &'a mut C, token_key: &'a str, user_or_admin_key: &'a str) -> Self {
-        return AuthStateService {
+        AuthStateService {
             client,
             token_key,
             user_or_admin_key,
-        };
+        }
     }
 
     async fn save_token(&self, token: &str) -> Result<(), RPocketError> {
-        return self.client.storage().set(self.token_key, token).await;
+        self.client.storage().set(self.token_key, token).await
     }
 
     async fn save_user_or_admin(&self, record: &AuthPayload) -> Result<(), RPocketError> {
-        return self
-            .client
+        self.client
             .storage()
             .set(self.user_or_admin_key, &serde_json::to_string(record)?)
-            .await;
+            .await
     }
 
     /// get the token.
     pub async fn get_token(&self) -> Result<Option<String>, RPocketError> {
-        return self.client.storage().get(self.token_key).await;
+        self.client.storage().get(self.token_key).await
     }
 
     // get the user or admin record.
     pub async fn get_user_or_admin(&self) -> Result<Option<AuthPayload>, RPocketError> {
         let storage = self.client.storage();
         let data = storage.get(self.user_or_admin_key).await?;
-        return match data {
+        match data {
             Some(data) => {
                 let record: AuthPayload = serde_json::from_str(&data)?;
-                return Ok(Some(record));
+                Ok(Some(record))
             }
             None => Ok(None),
-        };
+        }
     }
 
     /// clear the storage.
@@ -66,14 +65,14 @@ where
         let storage = self.client.storage();
         storage.delete(self.token_key).await?;
         storage.delete(self.user_or_admin_key).await?;
-        return Ok(());
+        Ok(())
     }
 
     // save the token and the user or admin record.
     pub async fn save(&self, token: &str, record: &AuthPayload) -> Result<(), RPocketError> {
         self.save_token(token).await?;
         self.save_user_or_admin(record).await?;
-        return Ok(());
+        Ok(())
     }
 }
 

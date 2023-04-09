@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 pub const DEFAULT_COLLECTION_TYPE: &str = "base";
 
 pub fn get_default_collection_type() -> String {
-    return DEFAULT_COLLECTION_TYPE.to_string();
+    DEFAULT_COLLECTION_TYPE.to_string()
 }
 
 /// BaseModel is the base model for all models.

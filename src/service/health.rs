@@ -26,7 +26,7 @@ where
 {
     /// create a new HealthService.
     pub fn new(client: &'a mut C) -> Self {
-        return HealthService { client };
+        HealthService { client }
     }
 
     /// get the health status of the server.
@@ -44,7 +44,7 @@ where
 
         let response = self.client.http().send(request_builder).await?;
 
-        return Ok(response.json::<T>().await?);
+        Ok(response.json::<T>().await?)
     }
 }
 

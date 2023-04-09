@@ -72,7 +72,7 @@ where
 {
     /// create a new SettingService.
     pub fn new(client: &'a mut C) -> Self {
-        return SettingService { client };
+        SettingService { client }
     }
 
     /// returns all settings.
@@ -90,7 +90,7 @@ where
 
         let response = self.client.http().send(request_builder).await?;
 
-        return Ok(response.json::<T>().await?);
+        Ok(response.json::<T>().await?)
     }
 
     /// updates the provided settings.
@@ -110,7 +110,7 @@ where
 
         let response = self.client.http().send(request_builder).await?;
 
-        return Ok(response.json::<T>().await?);
+        Ok(response.json::<T>().await?)
     }
 
     /// tests the provided s3 settings.
@@ -129,7 +129,7 @@ where
 
         self.client.http().send(request_builder).await?;
 
-        return Ok(());
+        Ok(())
     }
 
     /// tests the provided email settings.
@@ -151,7 +151,7 @@ where
 
         self.client.http().send(request_builder).await?;
 
-        return Ok(());
+        Ok(())
     }
 
     /// generates an apple client secret.
@@ -177,7 +177,7 @@ where
 
         let response = self.client.http().send(request_builder).await?;
 
-        return Ok(response.json::<T>().await?);
+        Ok(response.json::<T>().await?)
     }
 }
 
