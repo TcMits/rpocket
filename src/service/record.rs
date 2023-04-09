@@ -3,7 +3,6 @@ use std::collections::HashMap;
 use crate::error::RPocketError;
 use crate::model::Record;
 use crate::service;
-use crate::store::auth_storage::AuthPayload;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -168,7 +167,7 @@ where
     }
 
     /// returns crud service.
-    pub fn crud(&'a mut self) -> service::CRUDService<'a, C> {
+    pub fn crud(&'a mut self) -> service::crud::CRUDService<'a, C> {
         return self.client.crud(&self.record_base_path);
     }
 
@@ -200,7 +199,10 @@ where
             .map_err(|e| RPocketError::RequestError(e))?);
     }
 
-    async fn save_auth_response<T>(&self, response: reqwest::Response) -> Result<T, RPocketError>
+    async fn save_auth_response<T>(
+        &mut self,
+        response: reqwest::Response,
+    ) -> Result<T, RPocketError>
     where
         T: serde::de::DeserializeOwned,
     {
@@ -212,12 +214,12 @@ where
 
         let token = auth_response.token;
         let meta = auth_response.meta;
-        let user = AuthPayload::User(auth_response.record);
+        let user = service::auth_state::AuthPayload::User(auth_response.record);
 
         auth_state.save(token.as_str(), &user).await?;
 
         let record = match user {
-            AuthPayload::User(user) => user,
+            service::auth_state::AuthPayload::User(user) => user,
             _ => unreachable!(),
         };
 
@@ -563,10 +565,9 @@ mod test {
     #[test]
     fn test_record_crud() {
         let mut base = PocketBase::new("http://test.com", "en");
-        let mut record_service = RecordService::new(&mut base, "test");
-        let crud = record_service.crud();
+        let record_service = RecordService::new(&mut base, "test");
 
-        assert!(crud.base_path == "api/collections/test/records");
+        assert!(record_service.record_base_path == "api/collections/test/records");
     }
 
     #[tokio::test]
@@ -689,9 +690,15 @@ mod test {
         mock.assert_async().await;
         let response = response.unwrap();
 
-        let auth_state_token = base.auth_state().token().await.unwrap().unwrap();
-        let auth_record = match base.auth_state().user_or_admin().await.unwrap().unwrap() {
-            AuthPayload::User(user) => user,
+        let auth_state_token = base.auth_state().get_token().await.unwrap().unwrap();
+        let auth_record = match base
+            .auth_state()
+            .get_user_or_admin()
+            .await
+            .unwrap()
+            .unwrap()
+        {
+            service::auth_state::AuthPayload::User(user) => user,
             _ => unreachable!(),
         };
 

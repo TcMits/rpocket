@@ -2,13 +2,10 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug)]
 pub enum RPocketError {
-    // internal errors
     MutexError,
     SerdeError(serde_json::Error),
     RequestError(reqwest::Error),
     UrlError(url::ParseError),
-
-    // api errors
     APIError(APIError),
 }
 

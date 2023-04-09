@@ -31,7 +31,7 @@ where
     }
 
     /// returns crud service.
-    pub fn crud(&'a mut self) -> service::CRUDService<'a, C> {
+    pub fn crud(&'a mut self) -> service::crud::CRUDService<'a, C> {
         return self.client.crud(&self.request_base_path);
     }
 
@@ -73,10 +73,9 @@ mod test {
     #[test]
     fn test_log_crud() {
         let mut base = PocketBase::new("http://test.com", "en");
-        let mut record_service = LogService::new(&mut base);
-        let crud = record_service.crud();
+        let log_service = LogService::new(&mut base);
 
-        assert!(crud.base_path == "api/logs/requests");
+        assert!(log_service.request_base_path == "api/logs/requests");
     }
 
     #[tokio::test]

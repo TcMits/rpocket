@@ -2,7 +2,7 @@ use crate::service;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-use crate::{error::RPocketError, model::Admin, store::auth_storage::AuthPayload};
+use crate::{error::RPocketError, model::Admin, service::auth_state::AuthPayload};
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -75,11 +75,14 @@ where
     }
 
     /// returns crud service.
-    pub fn crud(&'a mut self) -> service::CRUDService<'a, C> {
+    pub fn crud(&'a mut self) -> service::crud::CRUDService<'a, C> {
         return self.client.crud(&self.admin_base_path);
     }
 
-    async fn save_auth_response<T>(&self, response: reqwest::Response) -> Result<T, RPocketError>
+    async fn save_auth_response<T>(
+        &mut self,
+        response: reqwest::Response,
+    ) -> Result<T, RPocketError>
     where
         T: serde::de::DeserializeOwned,
     {
@@ -242,10 +245,9 @@ mod test {
     #[test]
     fn test_admin_crud() {
         let mut base = PocketBase::new("http://test.com", "en");
-        let mut admin_service = AdminService::new(&mut base);
-        let crud = admin_service.crud();
+        let admin_service = AdminService::new(&mut base);
 
-        assert!(crud.base_path == "api/admins");
+        assert!(admin_service.admin_base_path == "api/admins");
     }
 
     #[tokio::test]
@@ -290,8 +292,14 @@ mod test {
         mock.assert_async().await;
         let response = response.unwrap();
 
-        let auth_state_token = base.auth_state().token().await.unwrap().unwrap();
-        let auth_record = match base.auth_state().user_or_admin().await.unwrap().unwrap() {
+        let auth_state_token = base.auth_state().get_token().await.unwrap().unwrap();
+        let auth_record = match base
+            .auth_state()
+            .get_user_or_admin()
+            .await
+            .unwrap()
+            .unwrap()
+        {
             AuthPayload::Admin(user) => user,
             _ => unreachable!(),
         };

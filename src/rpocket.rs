@@ -1,38 +1,49 @@
-use crate::{error::APIError, error::RPocketError, service, store, store::auth_storage};
+use crate::{error::RPocketError, service, store};
 use async_trait::async_trait;
 use futures::future::BoxFuture;
 use std::sync::Arc;
 use tower::layer::util::Identity;
 
+pub const TOKEN_KEY: &str = "pb_auth";
+pub const USER_OR_ADMIN_KEY: &str = "pb_user_or_admin";
+
 #[async_trait]
 pub trait PocketBaseClient {
+    fn lang(&self) -> &str;
     fn base_url(&self) -> &url::Url;
-    fn auth_state(&self) -> Arc<dyn auth_storage::AuthState + Sync + Send>;
     fn request_builder(&self, method: reqwest::Method, url: &str) -> reqwest::RequestBuilder;
+    fn storage(&self) -> Arc<dyn store::Storage + Sync + Send>;
 
-    async fn send(
+    /// execute a request.
+    async fn call(
         &mut self,
         request: PocketBaseRequest,
-    ) -> Result<PocketBaseResponse, RPocketError>;
+    ) -> Result<PocketBaseResponse, RPocketError>
+    where
+        Self: Sized;
+
+    /// returns auth state service.
+    fn auth_state<'a>(&'a mut self) -> service::auth_state::AuthStateService<'a, Self>
+    where
+        Self: Sized;
 
     /// returns http service.
-    fn http<'a>(&'a mut self) -> service::HTTPService<'a, Self>
+    fn http<'a>(&'a mut self) -> service::http::HTTPService<'a, Self>
     where
         Self: Sized,
     {
-        return service::HTTPService::new(self);
+        return service::http::HTTPService::new(self);
     }
 
     /// returns crud service.
-    fn crud<'a>(&'a mut self, base_path: &'a str) -> service::CRUDService<'a, Self>
+    fn crud<'a>(&'a mut self, base_path: &'a str) -> service::crud::CRUDService<'a, Self>
     where
         Self: Sized,
     {
-        return service::CRUDService::new(self, base_path);
+        return service::crud::CRUDService::new(self, base_path);
     }
 
     /// returns record service.
-    /// name: the collection name.
     fn record<'a>(&'a mut self, name: &'a str) -> service::record::RecordService<'a, Self>
     where
         Self: Sized,
@@ -63,30 +74,56 @@ pub trait PocketBaseClient {
     {
         return service::log::LogService::new(self);
     }
+
+    /// returns setting service.
+    fn setting<'a>(&'a mut self) -> service::setting::SettingService<'a, Self>
+    where
+        Self: Sized,
+    {
+        return service::setting::SettingService::new(self);
+    }
+
+    /// retuns health service.
+    fn health<'a>(&'a mut self) -> service::health::HealthService<'a, Self>
+    where
+        Self: Sized,
+    {
+        return service::health::HealthService::new(self);
+    }
 }
 
-// PocketBaseRequest is the request for PocketBase.
-// now it only supports HTTP request.
+/// PocketBaseHTTPRequest is the HTTP request for PocketBase.
+#[derive(Debug)]
+pub struct PocketBaseHTTPRequest {
+    pub request_builder: reqwest::RequestBuilder,
+}
+
+/// PocketBaseRequest is the request for PocketBase.
+/// now it only supports HTTP request.
 #[derive(Debug)]
 pub enum PocketBaseRequest {
-    HTTP {
-        request_builder: reqwest::RequestBuilder,
-    },
+    HTTP(PocketBaseHTTPRequest),
 }
 
-// PocketBaseResponse is the response for PocketBase.
-// now it only supports HTTP response.
+/// PocketBaseHTTPResponse is the HTTP response for PocketBase.
+#[derive(Debug)]
+pub struct PocketBaseHTTPResponse {
+    pub response: reqwest::Response,
+}
+
+/// PocketBaseResponse is the response for PocketBase.
+/// now it only supports HTTP response.
 #[derive(Debug)]
 pub enum PocketBaseResponse {
-    HTTP { response: reqwest::Response },
+    HTTP(PocketBaseHTTPResponse),
 }
 
 pub struct PocketBaseBuilder<L> {
     lang: &'static str,
+    token_key: &'static str,
+    user_or_admin_key: &'static str,
     base_url: url::Url,
-    // auth
-    auth_state: Arc<dyn auth_storage::AuthState + Send + Sync>,
-    // http client
+    storage: Arc<dyn store::Storage + Sync + Send>,
     http_client: reqwest::Client,
     layer: L,
 }
@@ -96,10 +133,10 @@ impl PocketBaseBuilder<Identity> {
     pub fn new() -> Self {
         return PocketBaseBuilder {
             lang: "en",
+            token_key: TOKEN_KEY,
+            user_or_admin_key: USER_OR_ADMIN_KEY,
             base_url: url::Url::parse("https://api.pocketbase.io").unwrap(),
-            auth_state: Arc::new(auth_storage::AuthStorage::new(Arc::new(
-                store::MemoryStorage::new(),
-            ))),
+            storage: Arc::new(store::MemoryStorage::new()),
             http_client: reqwest::Client::new(),
             layer: Identity::new(),
         };
@@ -107,45 +144,56 @@ impl PocketBaseBuilder<Identity> {
 }
 
 impl<L> PocketBaseBuilder<L> {
-    /// Set the language.
+    /// set the language.
     pub fn lang(mut self, lang: &'static str) -> Self {
         self.lang = lang;
         return self;
     }
 
-    /// Set the base URL.
+    /// set the base URL.
     pub fn base_url(mut self, base_url: &str) -> Self {
         self.base_url = url::Url::parse(base_url).unwrap();
         return self;
     }
 
-    /// Set the auth state.
-    pub fn auth_state(
-        mut self,
-        auth_state: Arc<dyn auth_storage::AuthState + Send + Sync>,
-    ) -> Self {
-        self.auth_state = auth_state;
+    /// set token key
+    pub fn token_key(mut self, token_key: &'static str) -> Self {
+        self.token_key = token_key;
         return self;
     }
 
-    /// Set the http client.
+    /// set user or admin key
+    pub fn user_or_admin_key(mut self, user_or_admin_key: &'static str) -> Self {
+        self.user_or_admin_key = user_or_admin_key;
+        return self;
+    }
+
+    /// set the storage.
+    pub fn storage(mut self, storage: Arc<dyn store::Storage + Send + Sync>) -> Self {
+        self.storage = storage;
+        return self;
+    }
+
+    /// set the http client.
     pub fn http_client(mut self, http_client: reqwest::Client) -> Self {
         self.http_client = http_client;
         return self;
     }
 
-    /// Add middlewares.
+    /// add middlewares.
     pub fn layer<T>(self, layer: T) -> PocketBaseBuilder<tower::layer::util::Stack<T, L>> {
         return PocketBaseBuilder {
             lang: self.lang,
+            token_key: self.token_key,
+            user_or_admin_key: self.user_or_admin_key,
             base_url: self.base_url,
-            auth_state: self.auth_state,
+            storage: self.storage,
             layer: tower::layer::util::Stack::new(layer, self.layer),
             http_client: self.http_client,
         };
     }
 
-    /// Build the PocketBase.
+    /// build the PocketBase.
     pub fn build(self) -> PocketBase<L::Service>
     where
         L: tower::Layer<PocketBaseService>,
@@ -158,38 +206,41 @@ impl<L> PocketBaseBuilder<L> {
             + Send
             + Sync,
     {
+        let inner = Arc::new(PocketBaseRef {
+            lang: self.lang,
+            token_key: self.token_key,
+            user_or_admin_key: self.user_or_admin_key,
+            base_url: self.base_url,
+            storage: self.storage,
+            http_client: self.http_client,
+        });
+
         let client = PocketBaseService {
-            inner: Arc::new(PocketBaseServiceRef {
-                http_client: self.http_client.clone(),
-            }),
+            inner: inner.clone(),
         };
 
         let client = self.layer.layer(client);
 
-        let inner = PocketBaseRef {
-            lang: self.lang,
-            base_url: self.base_url,
-            auth_state: self.auth_state,
-            http_client: self.http_client,
-        };
-
-        return PocketBase {
-            inner: Arc::new(inner),
-            client,
-        };
+        return PocketBase { inner, client };
     }
 }
 
-// PocketBaseServiceRef is the reference of PocketBaseService state.
-// it is used to clone PocketBaseService.
-struct PocketBaseServiceRef {
+// PocketBaseRef is the reference of PocketBase state.
+// it is used to clone PocketBase.
+#[derive(Clone)]
+struct PocketBaseRef {
+    lang: &'static str,
+    token_key: &'static str,
+    user_or_admin_key: &'static str,
+    base_url: url::Url,
+    storage: Arc<dyn store::Storage + Sync + Send>,
     http_client: reqwest::Client,
 }
 
-// PocketBaseService is the service for sending requests.
+/// PocketBaseService is the service for sending requests.
 #[derive(Clone)]
 pub struct PocketBaseService {
-    inner: Arc<PocketBaseServiceRef>,
+    inner: Arc<PocketBaseRef>,
 }
 
 impl tower_service::Service<PocketBaseRequest> for PocketBaseService {
@@ -204,16 +255,15 @@ impl tower_service::Service<PocketBaseRequest> for PocketBaseService {
         return std::task::Poll::Ready(Ok(())); // TODO: check if the client is ready (healthcheck).
     }
 
-    /// Call the service.
-    /// request: the request.
     fn call(&mut self, request: PocketBaseRequest) -> Self::Future {
         let this = self.clone();
-        let request_builder = match request {
-            PocketBaseRequest::HTTP { request_builder } => request_builder,
+        let req = match request {
+            PocketBaseRequest::HTTP(req) => req,
         };
 
         return Box::pin(async move {
-            let request = request_builder
+            let request = req
+                .request_builder
                 .build()
                 .map_err(|e| RPocketError::RequestError(e))?;
 
@@ -224,25 +274,14 @@ impl tower_service::Service<PocketBaseRequest> for PocketBaseService {
                 .await
                 .map_err(|e| RPocketError::RequestError(e));
 
-            return response.map(|response| PocketBaseResponse::HTTP { response });
+            return response
+                .map(|response| PocketBaseResponse::HTTP(PocketBaseHTTPResponse { response }));
         });
     }
 }
 
-// PocketBaseRef is the reference of PocketBase state.
-// it is used to clone PocketBase.
-struct PocketBaseRef {
-    lang: &'static str,
-    base_url: url::Url,
-    // auth
-    auth_state: Arc<dyn auth_storage::AuthState + Send + Sync>,
-    // cloned client of builder
-    // http_client will be used to create request_builder
-    http_client: reqwest::Client,
-}
-
-// PocketBase is the main struct.
-// it is used to send request to PocketBase.
+/// PocketBase is the main struct.
+/// it is used to send request to PocketBase.
 #[derive(Clone)]
 pub struct PocketBase<S> {
     inner: Arc<PocketBaseRef>,
@@ -253,69 +292,11 @@ pub struct PocketBase<S> {
 
 impl PocketBase<PocketBaseService> {
     /// Create a new PocketBase.
-    /// base_url: the base URL.
-    /// lang: the language.
     pub fn new(base_url: &str, lang: &'static str) -> Self {
         return PocketBaseBuilder::new()
             .base_url(base_url)
             .lang(lang)
             .build();
-    }
-}
-
-impl<S> PocketBase<S> {
-    /// Get the language.
-    pub fn lang(&self) -> &str {
-        return self.inner.lang;
-    }
-
-    /// Send a request.
-    /// request_builder: the request builder.
-    pub async fn send_request(
-        &mut self,
-        pb_request: PocketBaseRequest,
-    ) -> Result<PocketBaseResponse, RPocketError>
-    where
-        S: tower_service::Service<
-                PocketBaseRequest,
-                Response = PocketBaseResponse,
-                Error = RPocketError,
-                Future = BoxFuture<'static, Result<PocketBaseResponse, RPocketError>>,
-            > + Send
-            + Sync,
-    {
-        let mut request_builder = match pb_request {
-            PocketBaseRequest::HTTP { request_builder } => request_builder,
-        };
-
-        request_builder =
-            request_builder.header(reqwest::header::ACCEPT_LANGUAGE.as_str(), self.inner.lang);
-        match self.inner.auth_state.token().await? {
-            Some(token) => {
-                request_builder =
-                    request_builder.header(reqwest::header::AUTHORIZATION.as_str(), token)
-            }
-            None => {}
-        }
-
-        let resp = tower::util::Ready::new(&mut self.client)
-            .await?
-            .call(PocketBaseRequest::HTTP { request_builder })
-            .await?;
-
-        match resp {
-            PocketBaseResponse::HTTP { response } => {
-                if !response.status().is_success() {
-                    return Err(RPocketError::APIError(
-                        response
-                            .json::<APIError>()
-                            .await
-                            .map_err(|e| RPocketError::RequestError(e))?,
-                    ));
-                }
-                return Ok(PocketBaseResponse::HTTP { response });
-            }
-        };
     }
 }
 
@@ -330,40 +311,48 @@ where
         > + Send
         + Sync,
 {
-    /// Get the base URL.
+    /// get the base URL.
     fn base_url(&self) -> &url::Url {
         return &self.inner.base_url;
     }
 
-    /// Get the AuthStorage.
-    fn auth_state(&self) -> Arc<dyn auth_storage::AuthState + Sync + Send> {
-        return self.inner.auth_state.clone();
+    /// get the language.
+    fn lang(&self) -> &str {
+        return self.inner.lang;
     }
 
-    /// Get request builder.
+    /// get the storage.
+    fn storage(&self) -> Arc<dyn store::Storage + Sync + Send> {
+        return self.inner.storage.clone();
+    }
+
+    fn auth_state<'a>(&'a mut self) -> service::auth_state::AuthStateService<'a, Self> {
+        return service::auth_state::AuthStateService::new(
+            self,
+            self.inner.token_key,
+            self.inner.user_or_admin_key,
+        );
+    }
+
+    /// get request builder.
     fn request_builder(&self, method: reqwest::Method, url: &str) -> reqwest::RequestBuilder {
         return self.inner.http_client.request(method, url);
     }
 
-    /// Send a request.
-    async fn send(
+    /// execute a request.
+    async fn call(
         &mut self,
         request: PocketBaseRequest,
     ) -> Result<PocketBaseResponse, RPocketError> {
-        match request {
-            PocketBaseRequest::HTTP { request_builder } => {
-                return self
-                    .send_request(PocketBaseRequest::HTTP { request_builder })
-                    .await;
-            }
-        }
+        return tower::util::Ready::new(&mut self.client)
+            .await?
+            .call(request)
+            .await;
     }
 }
 
 #[cfg(test)]
 mod test {
-    use crate::store::{auth_storage::TOKEN_KEY, Storage};
-
     use super::*;
 
     #[test]
@@ -385,67 +374,33 @@ mod test {
     #[tokio::test]
     async fn test_pocket_base_send_request() {
         let mut server = mockito::Server::new();
-        let memeory = Arc::new(store::MemoryStorage::new());
-        memeory.set(TOKEN_KEY, "token").await.unwrap();
-        let auth_state = Arc::new(auth_storage::AuthStorage::new(memeory.clone()));
         let url = server.url();
 
         let mock = server
             .mock("GET", "/")
             .with_status(200)
             .with_header(reqwest::header::ACCEPT_LANGUAGE.as_str(), "en")
-            .match_header(reqwest::header::ACCEPT_LANGUAGE.as_str(), "en")
-            .match_header(reqwest::header::AUTHORIZATION.as_str(), "token")
             .create_async()
             .await;
 
         let mut base = PocketBaseBuilder::new()
             .base_url(url.as_str())
             .lang("en")
-            .auth_state(auth_state)
             .build();
+
         let request_builder = base.request_builder(reqwest::Method::GET, url.as_str());
+
         let response = base
-            .send(PocketBaseRequest::HTTP { request_builder })
+            .call(PocketBaseRequest::HTTP(PocketBaseHTTPRequest {
+                request_builder,
+            }))
             .await
             .unwrap();
 
         let response = match response {
-            PocketBaseResponse::HTTP { response } => response,
+            PocketBaseResponse::HTTP(PocketBaseHTTPResponse { response }) => response,
         };
         assert_eq!(response.status(), reqwest::StatusCode::OK);
-        mock.assert_async().await;
-    }
-
-    #[tokio::test]
-    async fn test_pocket_base_send_request_error() {
-        let mut server = mockito::Server::new();
-        let url = server.url();
-
-        let mock = server
-            .mock("GET", "/")
-            .with_status(400)
-            .with_header(reqwest::header::ACCEPT_LANGUAGE.as_str(), "en")
-            .match_header(reqwest::header::ACCEPT_LANGUAGE.as_str(), "en")
-            .with_body("{\"code\": 400, \"message\": \"Bad Request\", \"data\": {}}")
-            .create_async()
-            .await;
-
-        let mut base = PocketBase::new(url.as_str(), "en");
-        let request_builder = base.request_builder(reqwest::Method::GET, url.as_str());
-        let err = base
-            .send(PocketBaseRequest::HTTP { request_builder })
-            .await
-            .unwrap_err();
-
-        match err {
-            RPocketError::APIError(e) => {
-                assert_eq!(e.code, 400);
-                assert_eq!(e.message, "Bad Request");
-                assert_eq!(e.data, serde_json::json!({}));
-            }
-            _ => panic!("Unexpected error {:?}", err),
-        }
         mock.assert_async().await;
     }
 
@@ -470,12 +425,12 @@ mod test {
         }
 
         fn call(&mut self, req: PocketBaseRequest) -> Self::Future {
-            let mut request_builder = match req {
-                PocketBaseRequest::HTTP { request_builder } => request_builder,
+            let mut req = match req {
+                PocketBaseRequest::HTTP(req) => req,
             };
 
-            request_builder = request_builder.header("X-Test", "test");
-            self.inner.call(PocketBaseRequest::HTTP { request_builder })
+            req.request_builder = req.request_builder.header("X-Test", "test");
+            self.inner.call(PocketBaseRequest::HTTP(req))
         }
     }
 
@@ -488,9 +443,7 @@ mod test {
             .mock("GET", "/")
             .with_status(400)
             .with_header(reqwest::header::ACCEPT_LANGUAGE.as_str(), "en")
-            .match_header(reqwest::header::ACCEPT_LANGUAGE.as_str(), "en")
             .match_header("X-Test", "test")
-            .with_body("{\"code\": 400, \"message\": \"Bad Request\", \"data\": {}}")
             .create_async()
             .await;
 
@@ -504,27 +457,11 @@ mod test {
             .build();
 
         let request_builder = base.request_builder(reqwest::Method::GET, url.as_str());
-        base.send(PocketBaseRequest::HTTP { request_builder })
-            .await
-            .unwrap_err();
+        base.call(PocketBaseRequest::HTTP(PocketBaseHTTPRequest {
+            request_builder,
+        }))
+        .await
+        .unwrap();
         mock.assert_async().await;
-    }
-
-    #[test]
-    fn test_pocket_base_record() {
-        let mut base = PocketBase::new("http://localhost:8080", "en");
-        base.record("test");
-    }
-
-    #[test]
-    fn test_pocket_base_admin() {
-        let mut base = PocketBase::new("http://localhost:8080", "en");
-        base.admin();
-    }
-
-    #[test]
-    fn test_pocket_base_collection() {
-        let mut base = PocketBase::new("http://localhost:8080", "en");
-        base.collection();
     }
 }
