@@ -50,12 +50,12 @@ impl From<Box<dyn std::error::Error + Send + Sync>> for RPocketError {
 impl std::fmt::Display for RPocketError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            RPocketError::MutexError => write!(f, "Mutex error"),
-            RPocketError::SerdeError(error) => write!(f, "Serde error: {}", error),
-            RPocketError::RequestError(error) => write!(f, "Request error: {}", error),
-            RPocketError::UrlError(error) => write!(f, "Url error: {}", error),
+            RPocketError::MutexError => write!(f, "mutex error"),
+            RPocketError::SerdeError(error) => write!(f, "serde error: {}", error),
+            RPocketError::RequestError(error) => write!(f, "request error: {}", error),
+            RPocketError::UrlError(error) => write!(f, "url error: {}", error),
             RPocketError::APIError(error) => write!(f, "API error: {}", error.message),
-            RPocketError::Error(error) => write!(f, "Error: {}", error),
+            RPocketError::Error(error) => write!(f, "error: {}", error),
         }
     }
 }
