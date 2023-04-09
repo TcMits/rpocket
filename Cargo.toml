@@ -2,6 +2,12 @@
 name = "rpocket"
 version = "0.1.0"
 edition = "2021"
+description = "An unofficial SDK for the PocketBase written in Rust. This SDK provides an easy-to-use interface for interacting with the PocketBase API, allowing developers to manage their pocketbase server and perform CRUD operations seamlessly."
+readme = "README.md"
+repository = "https://github.com/TcMits/rpocket"
+license-file = "LICENSE"
+keywords = ["pocketbase", "sdk"]
+
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
