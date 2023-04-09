@@ -23,3 +23,6 @@ rpocket = { path = ".", features = ["multipart"] }
 [features]
 default = []
 multipart = ["reqwest/multipart"]
+
+[[example]]
+name = "simple"
